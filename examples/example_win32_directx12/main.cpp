@@ -2,6 +2,13 @@
 // If you are new to dear imgui, see examples/README.txt and documentation at the top of imgui.cpp.
 // FIXME: 64-bit only for now! (Because sizeof(ImTextureId) == sizeof(void*))
 
+//    static __int64                g_Time;
+//    static __int64                g_TicksPerSecond;
+//    static __int64                g_TimeAtStartup;
+
+//pch
+//#include "brcalc.pch"
+
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx12.h"
@@ -43,6 +50,20 @@ static HANDLE                       g_hSwapChainWaitableObject = NULL;
 static ID3D12Resource*              g_mainRenderTargetResource[NUM_BACK_BUFFERS] = {};
 static D3D12_CPU_DESCRIPTOR_HANDLE  g_mainRenderTargetDescriptor[NUM_BACK_BUFFERS] = {};
 
+
+#ifndef STARTUP_BENCHMARK 
+    #define STARTUP_BENCHMARK
+    
+    static __int64                  g_AppCreationTime;
+    static __int64                  g_AppDestructionTime;
+    #include "stb_sprintf.h"
+    #include "stdio.h"
+    
+#endif
+//comentar abaixo para encerar o benchmark
+#undef STARTUP_BENCHMARK
+
+
 // Forward declarations of helper functions
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
@@ -56,10 +77,15 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 // Main code
 int main(int, char**)
 {
+    #ifdef STARTUP_BENCHMARK 
+    if (!::QueryPerformanceCounter((LARGE_INTEGER*)&g_AppCreationTime))
+                return false;
+    #endif
+
     // Create application window
-    WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T("ImGui Example"), NULL };
+    WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T( "BRCalc" ), NULL };
     ::RegisterClassEx(&wc);
-    HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("Dear ImGui DirectX12 Example"), WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, NULL, NULL, wc.hInstance, NULL);
+    HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("BRCalc"), WS_OVERLAPPEDWINDOW, 100, 100, 400, 500, NULL, NULL, wc.hInstance, NULL);
 
     // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd))
@@ -103,6 +129,8 @@ int main(int, char**)
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
+    ImFont* defaultFont = io.Fonts->AddFontFromFileTTF("../../misc/fonts/Karla-Regular.ttf", 15.f);
+    ImFont* calcFont = io.Fonts->AddFontFromFileTTF("../../misc/fonts/SourceCodePro-Black.ttf", 22.f);
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
     //IM_ASSERT(font != NULL);
 
@@ -170,6 +198,114 @@ int main(int, char**)
             ImGui::End();
         }
 
+        // 4. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
+        {
+
+            auto& style = ImGui::GetStyle();
+            auto bSize = ImVec2(ImGui::GetWindowSize().x*0.1f, ImGui::GetWindowSize().x*0.1f);
+            style.FrameRounding = 4.0f;
+style.WindowBorderSize = 0.0f;
+style.PopupBorderSize = 0.0f;
+style.GrabRounding = 4.0f;
+
+ImVec4* colors = ImGui::GetStyle().Colors;
+colors[ImGuiCol_Text]                   = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+colors[ImGuiCol_TextDisabled]           = ImVec4(0.73f, 0.75f, 0.74f, 1.00f);
+colors[ImGuiCol_WindowBg]               = ImVec4(0.09f, 0.09f, 0.09f, 0.94f);
+colors[ImGuiCol_ChildBg]                = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+colors[ImGuiCol_PopupBg]                = ImVec4(0.08f, 0.08f, 0.08f, 0.94f);
+colors[ImGuiCol_Border]                 = ImVec4(0.20f, 0.20f, 0.20f, 0.50f);
+colors[ImGuiCol_BorderShadow]           = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+colors[ImGuiCol_FrameBg]                = ImVec4(0.71f, 0.39f, 0.39f, 0.54f);
+colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.84f, 0.66f, 0.66f, 0.40f);
+colors[ImGuiCol_FrameBgActive]          = ImVec4(0.84f, 0.66f, 0.66f, 0.67f);
+colors[ImGuiCol_TitleBg]                = ImVec4(0.47f, 0.22f, 0.22f, 0.67f);
+colors[ImGuiCol_TitleBgActive]          = ImVec4(0.47f, 0.22f, 0.22f, 1.00f);
+colors[ImGuiCol_TitleBgCollapsed]       = ImVec4(0.47f, 0.22f, 0.22f, 0.67f);
+colors[ImGuiCol_MenuBarBg]              = ImVec4(0.34f, 0.16f, 0.16f, 1.00f);
+colors[ImGuiCol_ScrollbarBg]            = ImVec4(0.02f, 0.02f, 0.02f, 0.53f);
+colors[ImGuiCol_ScrollbarGrab]          = ImVec4(0.31f, 0.31f, 0.31f, 1.00f);
+colors[ImGuiCol_ScrollbarGrabHovered]   = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
+colors[ImGuiCol_ScrollbarGrabActive]    = ImVec4(0.51f, 0.51f, 0.51f, 1.00f);
+colors[ImGuiCol_CheckMark]              = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+colors[ImGuiCol_SliderGrab]             = ImVec4(0.71f, 0.39f, 0.39f, 1.00f);
+colors[ImGuiCol_SliderGrabActive]       = ImVec4(0.84f, 0.66f, 0.66f, 1.00f);
+colors[ImGuiCol_Button]                 = ImVec4(0.47f, 0.22f, 0.22f, 0.65f);
+colors[ImGuiCol_ButtonHovered]          = ImVec4(0.71f, 0.39f, 0.39f, 0.65f);
+colors[ImGuiCol_ButtonActive]           = ImVec4(0.20f, 0.20f, 0.20f, 0.50f);
+colors[ImGuiCol_Header]                 = ImVec4(0.71f, 0.39f, 0.39f, 0.54f);
+colors[ImGuiCol_HeaderHovered]          = ImVec4(0.84f, 0.66f, 0.66f, 0.65f);
+colors[ImGuiCol_HeaderActive]           = ImVec4(0.84f, 0.66f, 0.66f, 0.00f);
+colors[ImGuiCol_Separator]              = ImVec4(0.43f, 0.43f, 0.50f, 0.50f);
+colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.71f, 0.39f, 0.39f, 0.54f);
+colors[ImGuiCol_SeparatorActive]        = ImVec4(0.71f, 0.39f, 0.39f, 0.54f);
+colors[ImGuiCol_ResizeGrip]             = ImVec4(0.71f, 0.39f, 0.39f, 0.54f);
+colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.84f, 0.66f, 0.66f, 0.66f);
+colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.84f, 0.66f, 0.66f, 0.66f);
+colors[ImGuiCol_Tab]                    = ImVec4(0.71f, 0.39f, 0.39f, 0.54f);
+colors[ImGuiCol_TabHovered]             = ImVec4(0.84f, 0.66f, 0.66f, 0.66f);
+colors[ImGuiCol_TabActive]              = ImVec4(0.84f, 0.66f, 0.66f, 0.66f);
+colors[ImGuiCol_TabUnfocused]           = ImVec4(0.07f, 0.10f, 0.15f, 0.97f);
+colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.14f, 0.26f, 0.42f, 1.00f);
+colors[ImGuiCol_PlotLines]              = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
+colors[ImGuiCol_PlotLinesHovered]       = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
+colors[ImGuiCol_PlotHistogram]          = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
+colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
+colors[ImGuiCol_NavHighlight]           = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
+colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
+colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
+colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
+
+            static float result = 0.0f;
+            static int counter = 0;
+
+            ImGui::Begin("Do your calcs here !!!");                          // Create a window called "Hello, world!" and append into it.
+
+            ImGui::Text("When adding numbers you press +");               // Display some text (you can use a format strings too)
+
+            //acho que preciso ir em imgui draw e checar se os buttons
+            //são da janela xyz, e lá alterar a fonte que pinta essa janela,
+            //tem alguem dizendo que tem que alterar a fonte quando beginframe,
+            //mas não queremos fazer isso
+            ImGui::PushFont(calcFont);
+
+            static char buf[13] =  "";
+            static char hint[13] = "0";
+            static __int64 result
+            static __int64 
+
+            //precisamos que o keyboard esteja aqui por padão mas não monopolize o foco
+            //ImGui::SetKeyboardFocusHere();
+            //queremos a label em branco e o buf inicial em branco
+            ImGui::InputTextWithHint("", hint, buf, IM_ARRAYSIZE(buf));
+
+            ImGui::Button("7",bSize); ImGui::SameLine();
+            ImGui::Button("8",bSize); ImGui::SameLine();
+            ImGui::Button("9",bSize); ImGui::SameLine();
+            ImGui::Button("X",bSize);
+            ImGui::Button("4",bSize); ImGui::SameLine();
+            ImGui::Button("5",bSize); ImGui::SameLine();
+            ImGui::Button("6",bSize); ImGui::SameLine();
+            ImGui::Button("-",bSize); 
+            ImGui::Button("1",bSize); ImGui::SameLine();
+            ImGui::Button("2",bSize); ImGui::SameLine();
+            ImGui::Button("3",bSize); ImGui::SameLine();
+            ImGui::Button("+",bSize);
+            ImGui::Button("+/-",bSize); ImGui::SameLine();
+            ImGui::Button("0",bSize); ImGui::SameLine();
+            ImGui::Button(",",bSize); ImGui::SameLine();
+            ImGui::Button("=",bSize); 
+
+            ImGui::PopFont();
+
+            ImGui::Text("counter = %d", counter);
+
+            ImGui::Text("Application average \n%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+            ImGui::End();
+        }
+
         // Rendering
         FrameContext* frameCtxt = WaitForNextFrameResources();
         UINT backBufferIdx = g_pSwapChain->GetCurrentBackBufferIndex();
@@ -204,6 +340,57 @@ int main(int, char**)
         g_pd3dCommandQueue->Signal(g_fence, fenceValue);
         g_fenceLastSignaledValue = fenceValue;
         frameCtxt->FenceValue = fenceValue;
+
+        
+        //manter desativado, benchmark de startup, vai encerrar app depois de um único frame
+        #ifdef STARTUP_BENCHMARK
+
+            __int64 TicksPerSecond;
+            if (!::QueryPerformanceCounter((LARGE_INTEGER*)&g_AppDestructionTime))
+                return false;
+            if (!::QueryPerformanceFrequency((LARGE_INTEGER*)&TicksPerSecond))
+                return false;
+
+
+            //#include <Synchapi.h>
+            //Sleep(1000);
+
+            //WaitForLastSubmittedFrame();
+            char buf[1024];
+            int ret = 0;
+
+            ret = stbsp_sprintf (buf, "time at startup: %lld\n", g_AppCreationTime);
+            fwrite(buf,  sizeof(char), ret, stdout);
+
+            __int64 current_time = 0;
+            ::QueryPerformanceCounter((LARGE_INTEGER*)&current_time);
+
+            ret = stbsp_sprintf (buf, "time at shutdown %lld\n", g_AppDestructionTime);
+            fwrite(buf,  sizeof(char), ret, stdout);
+
+            ret = stbsp_sprintf (buf, "time at shutdown %lld\n", TicksPerSecond);
+            fwrite(buf,  sizeof(char), ret, stdout);
+
+            double calc = (double) (g_AppDestructionTime-g_AppCreationTime)/TicksPerSecond;
+
+            if (TicksPerSecond != 0)
+                ret = stbsp_sprintf (buf, "exec time at shutdown %f ms\n", calc);
+            else
+                ret = stbsp_sprintf (buf, "to infinity and beyond\n" ); 
+            fwrite(buf,  sizeof(char), ret, stdout);
+        
+
+            ImGui_ImplDX12_Shutdown();
+            ImGui_ImplWin32_Shutdown();
+            ImGui::DestroyContext();
+
+            CleanupDeviceD3D();
+            ::DestroyWindow(hwnd);
+            ::UnregisterClass(wc.lpszClassName, wc.hInstance);
+
+            return 0;
+        #endif
+
     }
 
     WaitForLastSubmittedFrame();
