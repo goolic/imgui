@@ -1,29 +1,26 @@
+//pch
+#include "pch.h"
+
 // dear imgui: standalone example application for DirectX 12
 // If you are new to dear imgui, see examples/README.txt and documentation at the top of imgui.cpp.
 // FIXME: 64-bit only for now! (Because sizeof(ImTextureId) == sizeof(void*))
 
-//    static __int64                g_Time;
-//    static __int64                g_TicksPerSecond;
-//    static __int64                g_TimeAtStartup;
+// #include "imgui.h"
+// #include "imgui_impl_win32.h"
+// #include "imgui_impl_dx12.h"
+// #include <d3d12.h>
+// #include <dxgi1_4.h>
+// #include <tchar.h>
+// #include <math.h>
 
-//pch
-//#include "brcalc.pch"
+// #ifdef _DEBUG
+// #define DX12_ENABLE_DEBUG_LAYER
+// #endif
 
-#include "imgui.h"
-#include "imgui_impl_win32.h"
-#include "imgui_impl_dx12.h"
-#include <d3d12.h>
-#include <dxgi1_4.h>
-#include <tchar.h>
-
-#ifdef _DEBUG
-#define DX12_ENABLE_DEBUG_LAYER
-#endif
-
-#ifdef DX12_ENABLE_DEBUG_LAYER
-#include <dxgidebug.h>
-#pragma comment(lib, "dxguid.lib")
-#endif
+// #ifdef DX12_ENABLE_DEBUG_LAYER
+// #include <dxgidebug.h>
+// #pragma comment(lib, "dxguid.lib")
+// #endif
 
 struct FrameContext
 {
@@ -51,6 +48,12 @@ static ID3D12Resource*              g_mainRenderTargetResource[NUM_BACK_BUFFERS]
 static D3D12_CPU_DESCRIPTOR_HANDLE  g_mainRenderTargetDescriptor[NUM_BACK_BUFFERS] = {};
 
 
+void StyleColorsDarkRed(ImGuiStyle* dst);
+void StyleColorsLightGreen(ImGuiStyle* dst);
+
+static __int64                g_Time;
+static __int64                g_TicksPerSecond;
+static __int64                g_TimeAtStartup;
 #ifndef STARTUP_BENCHMARK 
     #define STARTUP_BENCHMARK
     
@@ -74,9 +77,104 @@ FrameContext* WaitForNextFrameResources();
 void ResizeSwapChain(HWND hWnd, int width, int height);
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-// Main code
-int main(int, char**)
+//se o usurari clicar em 1 botao temos de multiplicar o valor 
+//pela casa decimal em que estamos, adicionando o valor.
+//se clicar 7 operand recebe 7*1, se clicar em seguida
+//no 8 operand recebe 7*10 + 8*1 e se por fim clicar em 3,
+//recebera 7*100 + 8*10 + 3 * 1
+// queremos que primeiro os digitos sejam adicionados
+//em um array, e uma vez que a operação fopr selecionada
+// os digitos tem que ser popped fo array e receberem
+// n zeros e somados ao operand
+typedef enum {
+    FIRST_OPERAND,
+    SECOND_OPERAND,
+    MULTIPLICATION,
+    DIVISION,
+    SUM,
+    SUBTRACTION,
+    EQUALS,
+    COMMA,
+    SOMETHING
+} OP;
+struct arr {
+    __int8  item[15] = { 0 };
+    __int16 size = 0;
+};
+struct operands {
+    double x = 0;
+    double y = 0;
+    __int8 e = 0;
+    struct arr xC;// = component;
+    struct arr yC;// = component;
+    OP operador;
+};
+char   buf[13] =  "";
+__int16 i = 0;
+__int64 acumulador = 0;
+char arrayS[13] = "";
+static char print_buf[1024] = "";
+
+char * arrayToString(struct arr * theArr) {
+    int ch = 0;
+    for (i = 0; i != theArr->size; i = i + 1) {
+        ch = theArr->item[i] + 48;
+        arrayS[i] = (char)ch;
+    }
+    return arrayS;
+}
+void somador(struct operands& ops) {
+    acumulador = 0;
+    __int32 j = 0;
+    for (i = ops.e; i >= 0 && j <= ops.e; i = i - 1) {
+        acumulador = (acumulador + (double)(ops.xC.item[i] * pow(10, j)));
+        j = j + 1;
+    }
+    ops.x = acumulador;
+}
+void makeOperand (__int8 digit, struct operands& ops) {
+    //pra ficar correto é necessário armazenar os digitos 
+    //em um array e fazer pop deles na ordem reversa para 
+    //que a unidade de cada casa esteja no lugar certo
+
+
+    //@improvement: We can kill the need for op.e because we have arr.size now. it should be faster too !
+    if (ops.operador == FIRST_OPERAND) {
+        if (ops.e == 0) {
+            ops.xC.item[ops.e] = digit;
+            ops.xC.size = ops.xC.size + 1;
+            ops.x = digit;//(ops.x + (double)(digit * pow(10, ops.e)));
+        }
+        if (ops.e > 0) {
+            ops.xC.item[ops.e] = digit;
+            ops.xC.size = ops.xC.size + 1;
+            somador(ops);
+        }
+    }
+    if (ops.operador == SECOND_OPERAND) {
+        ops.xC.item[ops.e] = digit;
+        ops.xC.size = ops.xC.size + 1;
+        somador(ops);
+    }
+    digit = digit + 48;
+    //const char* ascii_digit = (const char*)(digit);
+    //strncat(buf, ascii_digit,1);
+    strncat(buf, (const char*)&digit, 1);
+    ops.e = ops.e+1;
+
+    int ret = 0;
+    auto abc = arrayToString(&ops.xC);
+    auto cba = arrayToString(&ops.yC);
+    ret = stbsp_sprintf(print_buf, "x:  %.3f\ny:  %.3f\ne:  %d\nxC: %s\nxy: %s\n ope %d", ops.x, ops.y, ops.e, abc, cba, ops.operador);
+    fwrite(print_buf, sizeof(char), ret, stdout);
+}
+void operateOrContinue(OP operation, struct operands& ops)
 {
+    int blarg =0;
+}
+
+// Main code
+int main(int, char**) {
     #ifdef STARTUP_BENCHMARK 
     if (!::QueryPerformanceCounter((LARGE_INTEGER*)&g_AppCreationTime))
                 return false;
@@ -137,6 +235,14 @@ int main(int, char**)
     // Our state
     bool show_demo_window = true;
     bool show_another_window = false;
+    bool whichtheme = false;
+
+    static char   hint[13] = "0";
+    static double result   = 0;
+    static struct operands op_history [SHRT_MAX];
+    static __int16 cursor = 0;
+
+
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Main loop
@@ -201,69 +307,24 @@ int main(int, char**)
         // 4. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
         {
 
-            auto& style = ImGui::GetStyle();
-            auto bSize = ImVec2(ImGui::GetWindowSize().x*0.1f, ImGui::GetWindowSize().x*0.1f);
-            style.FrameRounding = 4.0f;
-style.WindowBorderSize = 0.0f;
-style.PopupBorderSize = 0.0f;
-style.GrabRounding = 4.0f;
 
-ImVec4* colors = ImGui::GetStyle().Colors;
-colors[ImGuiCol_Text]                   = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
-colors[ImGuiCol_TextDisabled]           = ImVec4(0.73f, 0.75f, 0.74f, 1.00f);
-colors[ImGuiCol_WindowBg]               = ImVec4(0.09f, 0.09f, 0.09f, 0.94f);
-colors[ImGuiCol_ChildBg]                = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-colors[ImGuiCol_PopupBg]                = ImVec4(0.08f, 0.08f, 0.08f, 0.94f);
-colors[ImGuiCol_Border]                 = ImVec4(0.20f, 0.20f, 0.20f, 0.50f);
-colors[ImGuiCol_BorderShadow]           = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-colors[ImGuiCol_FrameBg]                = ImVec4(0.71f, 0.39f, 0.39f, 0.54f);
-colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.84f, 0.66f, 0.66f, 0.40f);
-colors[ImGuiCol_FrameBgActive]          = ImVec4(0.84f, 0.66f, 0.66f, 0.67f);
-colors[ImGuiCol_TitleBg]                = ImVec4(0.47f, 0.22f, 0.22f, 0.67f);
-colors[ImGuiCol_TitleBgActive]          = ImVec4(0.47f, 0.22f, 0.22f, 1.00f);
-colors[ImGuiCol_TitleBgCollapsed]       = ImVec4(0.47f, 0.22f, 0.22f, 0.67f);
-colors[ImGuiCol_MenuBarBg]              = ImVec4(0.34f, 0.16f, 0.16f, 1.00f);
-colors[ImGuiCol_ScrollbarBg]            = ImVec4(0.02f, 0.02f, 0.02f, 0.53f);
-colors[ImGuiCol_ScrollbarGrab]          = ImVec4(0.31f, 0.31f, 0.31f, 1.00f);
-colors[ImGuiCol_ScrollbarGrabHovered]   = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
-colors[ImGuiCol_ScrollbarGrabActive]    = ImVec4(0.51f, 0.51f, 0.51f, 1.00f);
-colors[ImGuiCol_CheckMark]              = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
-colors[ImGuiCol_SliderGrab]             = ImVec4(0.71f, 0.39f, 0.39f, 1.00f);
-colors[ImGuiCol_SliderGrabActive]       = ImVec4(0.84f, 0.66f, 0.66f, 1.00f);
-colors[ImGuiCol_Button]                 = ImVec4(0.47f, 0.22f, 0.22f, 0.65f);
-colors[ImGuiCol_ButtonHovered]          = ImVec4(0.71f, 0.39f, 0.39f, 0.65f);
-colors[ImGuiCol_ButtonActive]           = ImVec4(0.20f, 0.20f, 0.20f, 0.50f);
-colors[ImGuiCol_Header]                 = ImVec4(0.71f, 0.39f, 0.39f, 0.54f);
-colors[ImGuiCol_HeaderHovered]          = ImVec4(0.84f, 0.66f, 0.66f, 0.65f);
-colors[ImGuiCol_HeaderActive]           = ImVec4(0.84f, 0.66f, 0.66f, 0.00f);
-colors[ImGuiCol_Separator]              = ImVec4(0.43f, 0.43f, 0.50f, 0.50f);
-colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.71f, 0.39f, 0.39f, 0.54f);
-colors[ImGuiCol_SeparatorActive]        = ImVec4(0.71f, 0.39f, 0.39f, 0.54f);
-colors[ImGuiCol_ResizeGrip]             = ImVec4(0.71f, 0.39f, 0.39f, 0.54f);
-colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.84f, 0.66f, 0.66f, 0.66f);
-colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.84f, 0.66f, 0.66f, 0.66f);
-colors[ImGuiCol_Tab]                    = ImVec4(0.71f, 0.39f, 0.39f, 0.54f);
-colors[ImGuiCol_TabHovered]             = ImVec4(0.84f, 0.66f, 0.66f, 0.66f);
-colors[ImGuiCol_TabActive]              = ImVec4(0.84f, 0.66f, 0.66f, 0.66f);
-colors[ImGuiCol_TabUnfocused]           = ImVec4(0.07f, 0.10f, 0.15f, 0.97f);
-colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.14f, 0.26f, 0.42f, 1.00f);
-colors[ImGuiCol_PlotLines]              = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
-colors[ImGuiCol_PlotLinesHovered]       = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
-colors[ImGuiCol_PlotHistogram]          = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
-colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
-colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
-colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
-colors[ImGuiCol_NavHighlight]           = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
-colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
-colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
-colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
-
-            static float result = 0.0f;
+            //static float result = 0.0f;
             static int counter = 0;
 
             ImGui::Begin("Do your calcs here !!!");                          // Create a window called "Hello, world!" and append into it.
 
             ImGui::Text("When adding numbers you press +");               // Display some text (you can use a format strings too)
+
+            
+            if (ImGui::Button("Togle Theme")) {
+                whichtheme = !whichtheme;
+            }
+
+            if (whichtheme) {
+                StyleColorsDarkRed(NULL);
+            } else {
+                StyleColorsLightGreen(NULL);
+            }
 
             //acho que preciso ir em imgui draw e checar se os buttons
             //são da janela xyz, e lá alterar a fonte que pinta essa janela,
@@ -271,32 +332,47 @@ colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
             //mas não queremos fazer isso
             ImGui::PushFont(calcFont);
 
-            static char buf[13] =  "";
-            static char hint[13] = "0";
-            static __int64 result
-            static __int64 
+
+            if (0){
+            //if (op_history[cursor].op == operation.FIRST_OPERAND){
+                op_history[cursor].e = 0;
+                //do i need to set the .hasFirstOperand ???
+                //pushOperandHistory
+            } else {
+                //doCalc
+            }
+           
+            auto bSize = ImVec2(ImGui::GetWindowSize().x*0.1f, ImGui::GetWindowSize().x*0.1f);
 
             //precisamos que o keyboard esteja aqui por padão mas não monopolize o foco
             //ImGui::SetKeyboardFocusHere();
             //queremos a label em branco e o buf inicial em branco
+            //ImGuiInputTextFlags_CharsDecimal
+            //ImGuiInputTextFlags_CharsScientific
+            //ImGuiInputTextFlags_CharsHexadecimal
+            //ImGuiInputTextFlags_EnterReturnsTrue
+            //ImGuiInputTextFlags_CallbackHistory
+            ImGui::PushItemWidth(160.0f);
             ImGui::InputTextWithHint("", hint, buf, IM_ARRAYSIZE(buf));
 
-            ImGui::Button("7",bSize); ImGui::SameLine();
-            ImGui::Button("8",bSize); ImGui::SameLine();
-            ImGui::Button("9",bSize); ImGui::SameLine();
-            ImGui::Button("X",bSize);
-            ImGui::Button("4",bSize); ImGui::SameLine();
-            ImGui::Button("5",bSize); ImGui::SameLine();
-            ImGui::Button("6",bSize); ImGui::SameLine();
-            ImGui::Button("-",bSize); 
-            ImGui::Button("1",bSize); ImGui::SameLine();
-            ImGui::Button("2",bSize); ImGui::SameLine();
-            ImGui::Button("3",bSize); ImGui::SameLine();
-            ImGui::Button("+",bSize);
-            ImGui::Button("+/-",bSize); ImGui::SameLine();
-            ImGui::Button("0",bSize); ImGui::SameLine();
-            ImGui::Button(",",bSize); ImGui::SameLine();
-            ImGui::Button("=",bSize); 
+            if (ImGui::Button("7",   bSize))
+                makeOperand(7,op_history[cursor]);
+            ImGui::SameLine();
+            if (ImGui::Button("8",   bSize)) makeOperand(8,op_history[cursor]); ImGui::SameLine();
+            if (ImGui::Button("9",   bSize)) makeOperand(9,op_history[cursor]); ImGui::SameLine();
+            if (ImGui::Button("X",   bSize)) operateOrContinue(MULTIPLICATION,op_history[cursor]);
+            if (ImGui::Button("4",   bSize)) makeOperand(4,op_history[cursor]); ImGui::SameLine();
+            if (ImGui::Button("5",   bSize)) makeOperand(5,op_history[cursor]); ImGui::SameLine();
+            if (ImGui::Button("6",   bSize)) makeOperand(6,op_history[cursor]); ImGui::SameLine();
+            if (ImGui::Button("-",   bSize)) operateOrContinue(SUBTRACTION,op_history[cursor]); 
+            if (ImGui::Button("1",   bSize)) makeOperand(1,op_history[cursor]); ImGui::SameLine();
+            if (ImGui::Button("2",   bSize)) makeOperand(2,op_history[cursor]); ImGui::SameLine();
+            if (ImGui::Button("3",   bSize)) makeOperand(3,op_history[cursor]); ImGui::SameLine();
+            if (ImGui::Button("+",   bSize)) operateOrContinue(SUM,op_history[cursor]);
+            if (ImGui::Button("+/-", bSize)) operateOrContinue(SOMETHING,op_history[cursor]); ImGui::SameLine();
+            if (ImGui::Button("0",   bSize)) makeOperand(0,op_history[cursor]); ImGui::SameLine();
+            if (ImGui::Button(",",   bSize)) operateOrContinue(COMMA,op_history[cursor]); ImGui::SameLine();
+            if (ImGui::Button("=",   bSize)) operateOrContinue(EQUALS,op_history[cursor]);
 
             ImGui::PopFont();
 
@@ -304,6 +380,7 @@ colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
 
             ImGui::Text("Application average \n%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
             ImGui::End();
+
         }
 
         // Rendering
@@ -356,28 +433,27 @@ colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
             //Sleep(1000);
 
             //WaitForLastSubmittedFrame();
-            char buf[1024];
             int ret = 0;
 
-            ret = stbsp_sprintf (buf, "time at startup: %lld\n", g_AppCreationTime);
-            fwrite(buf,  sizeof(char), ret, stdout);
+            ret = stbsp_sprintf (print_buf, "time at startup: %lld\n", g_AppCreationTime);
+            fwrite(print_buf,  sizeof(char), ret, stdout);
 
             __int64 current_time = 0;
             ::QueryPerformanceCounter((LARGE_INTEGER*)&current_time);
 
-            ret = stbsp_sprintf (buf, "time at shutdown %lld\n", g_AppDestructionTime);
-            fwrite(buf,  sizeof(char), ret, stdout);
+            ret = stbsp_sprintf (print_buf, "time at shutdown %lld\n", g_AppDestructionTime);
+            fwrite(print_buf,  sizeof(char), ret, stdout);
 
-            ret = stbsp_sprintf (buf, "time at shutdown %lld\n", TicksPerSecond);
-            fwrite(buf,  sizeof(char), ret, stdout);
+            ret = stbsp_sprintf (print_buf, "time at shutdown %lld\n", TicksPerSecond);
+            fwrite(print_buf,  sizeof(char), ret, stdout);
 
             double calc = (double) (g_AppDestructionTime-g_AppCreationTime)/TicksPerSecond;
 
             if (TicksPerSecond != 0)
-                ret = stbsp_sprintf (buf, "exec time at shutdown %f ms\n", calc);
+                ret = stbsp_sprintf (print_buf, "exec time at shutdown %f ms\n", calc);
             else
-                ret = stbsp_sprintf (buf, "to infinity and beyond\n" ); 
-            fwrite(buf,  sizeof(char), ret, stdout);
+                ret = stbsp_sprintf (print_buf, "to infinity and beyond\n" ); 
+            fwrite(print_buf,  sizeof(char), ret, stdout);
         
 
             ImGui_ImplDX12_Shutdown();
@@ -404,6 +480,138 @@ colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
 
     return 0;
 }
+
+//https://github.com/ocornut/imgui/issues/707#issuecomment-636221193
+void StyleColorsDarkRed(ImGuiStyle* dst) {
+    ImGuiStyle* style = dst ? dst : &ImGui::GetStyle();
+    style->FrameRounding = 4.0f;
+    style->WindowBorderSize = 0.0f;
+    style->PopupBorderSize = 0.0f;
+    style->GrabRounding = 4.0f;
+
+    ImVec4* colors = ImGui::GetStyle().Colors;
+    colors[ImGuiCol_Text]                   = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    colors[ImGuiCol_TextDisabled]           = ImVec4(0.73f, 0.75f, 0.74f, 1.00f);
+    colors[ImGuiCol_WindowBg]               = ImVec4(0.09f, 0.09f, 0.09f, 0.94f);
+    colors[ImGuiCol_ChildBg]                = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_PopupBg]                = ImVec4(0.08f, 0.08f, 0.08f, 0.94f);
+    colors[ImGuiCol_Border]                 = ImVec4(0.20f, 0.20f, 0.20f, 0.50f);
+    colors[ImGuiCol_BorderShadow]           = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_FrameBg]                = ImVec4(0.71f, 0.39f, 0.39f, 0.54f);
+    colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.84f, 0.66f, 0.66f, 0.40f);
+    colors[ImGuiCol_FrameBgActive]          = ImVec4(0.84f, 0.66f, 0.66f, 0.67f);
+    colors[ImGuiCol_TitleBg]                = ImVec4(0.47f, 0.22f, 0.22f, 0.67f);
+    colors[ImGuiCol_TitleBgActive]          = ImVec4(0.47f, 0.22f, 0.22f, 1.00f);
+    colors[ImGuiCol_TitleBgCollapsed]       = ImVec4(0.47f, 0.22f, 0.22f, 0.67f);
+    colors[ImGuiCol_MenuBarBg]              = ImVec4(0.34f, 0.16f, 0.16f, 1.00f);
+    colors[ImGuiCol_ScrollbarBg]            = ImVec4(0.02f, 0.02f, 0.02f, 0.53f);
+    colors[ImGuiCol_ScrollbarGrab]          = ImVec4(0.31f, 0.31f, 0.31f, 1.00f);
+    colors[ImGuiCol_ScrollbarGrabHovered]   = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
+    colors[ImGuiCol_ScrollbarGrabActive]    = ImVec4(0.51f, 0.51f, 0.51f, 1.00f);
+    colors[ImGuiCol_CheckMark]              = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    colors[ImGuiCol_SliderGrab]             = ImVec4(0.71f, 0.39f, 0.39f, 1.00f);
+    colors[ImGuiCol_SliderGrabActive]       = ImVec4(0.84f, 0.66f, 0.66f, 1.00f);
+    colors[ImGuiCol_Button]                 = ImVec4(0.47f, 0.22f, 0.22f, 0.65f);
+    colors[ImGuiCol_ButtonHovered]          = ImVec4(0.71f, 0.39f, 0.39f, 0.65f);
+    colors[ImGuiCol_ButtonActive]           = ImVec4(0.20f, 0.20f, 0.20f, 0.50f);
+    colors[ImGuiCol_Header]                 = ImVec4(0.71f, 0.39f, 0.39f, 0.54f);
+    colors[ImGuiCol_HeaderHovered]          = ImVec4(0.84f, 0.66f, 0.66f, 0.65f);
+    colors[ImGuiCol_HeaderActive]           = ImVec4(0.84f, 0.66f, 0.66f, 0.00f);
+    colors[ImGuiCol_Separator]              = ImVec4(0.43f, 0.43f, 0.50f, 0.50f);
+    colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.71f, 0.39f, 0.39f, 0.54f);
+    colors[ImGuiCol_SeparatorActive]        = ImVec4(0.71f, 0.39f, 0.39f, 0.54f);
+    colors[ImGuiCol_ResizeGrip]             = ImVec4(0.71f, 0.39f, 0.39f, 0.54f);
+    colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.84f, 0.66f, 0.66f, 0.66f);
+    colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.84f, 0.66f, 0.66f, 0.66f);
+    colors[ImGuiCol_Tab]                    = ImVec4(0.71f, 0.39f, 0.39f, 0.54f);
+    colors[ImGuiCol_TabHovered]             = ImVec4(0.84f, 0.66f, 0.66f, 0.66f);
+    colors[ImGuiCol_TabActive]              = ImVec4(0.84f, 0.66f, 0.66f, 0.66f);
+    colors[ImGuiCol_TabUnfocused]           = ImVec4(0.07f, 0.10f, 0.15f, 0.97f);
+    colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.14f, 0.26f, 0.42f, 1.00f);
+    colors[ImGuiCol_PlotLines]              = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
+    colors[ImGuiCol_PlotLinesHovered]       = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
+    colors[ImGuiCol_PlotHistogram]          = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+    colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+    colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
+    colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
+    colors[ImGuiCol_NavHighlight]           = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
+    colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
+    colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
+    colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
+}
+
+// generic miniDart theme
+//https://github.com/ocornut/imgui/issues/707#issuecomment-439117182
+void StyleColorsLightGreen(ImGuiStyle* dst) {
+    ImGuiStyle* style = dst ? dst : &ImGui::GetStyle();
+    ImVec4* colors = style->Colors;
+
+    style->WindowRounding    = 2.0f;             // Radius of window corners rounding. Set to 0.0f to have rectangular windows
+    style->ScrollbarRounding = 3.0f;             // Radius of grab corners rounding for scrollbar
+    style->GrabRounding      = 2.0f;             // Radius of grabs corners rounding. Set to 0.0f to have rectangular slider grabs.
+    style->AntiAliasedLines  = true;
+    style->AntiAliasedFill   = true;
+    style->WindowRounding    = 2;
+    style->ChildRounding     = 2;
+    style->ScrollbarSize     = 16;
+    style->ScrollbarRounding = 3;
+    style->GrabRounding      = 2;
+    style->ItemSpacing.x     = 10;
+    style->ItemSpacing.y     = 4;
+    style->IndentSpacing     = 22;
+    style->FramePadding.x    = 6;
+    style->FramePadding.y    = 4;
+    style->Alpha             = 1.0f;
+    style->FrameRounding     = 3.0f;
+
+    colors[ImGuiCol_Text]                   = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+    colors[ImGuiCol_TextDisabled]          = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
+    colors[ImGuiCol_WindowBg]              = ImVec4(0.86f, 0.86f, 0.86f, 1.00f);
+    //colors[ImGuiCol_ChildWindowBg]         = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_ChildBg]                = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_PopupBg]                = ImVec4(0.93f, 0.93f, 0.93f, 0.98f);
+    colors[ImGuiCol_Border]                = ImVec4(0.71f, 0.71f, 0.71f, 0.08f);
+    colors[ImGuiCol_BorderShadow]          = ImVec4(0.00f, 0.00f, 0.00f, 0.04f);
+    colors[ImGuiCol_FrameBg]               = ImVec4(0.71f, 0.71f, 0.71f, 0.55f);
+    colors[ImGuiCol_FrameBgHovered]        = ImVec4(0.94f, 0.94f, 0.94f, 0.55f);
+    colors[ImGuiCol_FrameBgActive]         = ImVec4(0.71f, 0.78f, 0.69f, 0.98f);
+    colors[ImGuiCol_TitleBg]               = ImVec4(0.85f, 0.85f, 0.85f, 1.00f);
+    colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(0.82f, 0.78f, 0.78f, 0.51f);
+    colors[ImGuiCol_TitleBgActive]         = ImVec4(0.78f, 0.78f, 0.78f, 1.00f);
+    colors[ImGuiCol_MenuBarBg]             = ImVec4(0.86f, 0.86f, 0.86f, 1.00f);
+    colors[ImGuiCol_ScrollbarBg]           = ImVec4(0.20f, 0.25f, 0.30f, 0.61f);
+    colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.90f, 0.90f, 0.90f, 0.30f);
+    colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.92f, 0.92f, 0.92f, 0.78f);
+    colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    colors[ImGuiCol_CheckMark]             = ImVec4(0.184f, 0.407f, 0.193f, 1.00f);
+    colors[ImGuiCol_SliderGrab]            = ImVec4(0.26f, 0.59f, 0.98f, 0.78f);
+    colors[ImGuiCol_SliderGrabActive]      = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    colors[ImGuiCol_Button]                = ImVec4(0.71f, 0.78f, 0.69f, 0.40f);
+    colors[ImGuiCol_ButtonHovered]         = ImVec4(0.725f, 0.805f, 0.702f, 1.00f);
+    colors[ImGuiCol_ButtonActive]          = ImVec4(0.793f, 0.900f, 0.836f, 1.00f);
+    colors[ImGuiCol_Header]                = ImVec4(0.71f, 0.78f, 0.69f, 0.31f);
+    colors[ImGuiCol_HeaderHovered]         = ImVec4(0.71f, 0.78f, 0.69f, 0.80f);
+    colors[ImGuiCol_HeaderActive]          = ImVec4(0.71f, 0.78f, 0.69f, 1.00f);
+//        colors[ImGuiCol_Column]                = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
+//      colors[ImGuiCol_ColumnHovered]         = ImVec4(0.26f, 0.59f, 0.98f, 0.78f);
+//    colors[ImGuiCol_ColumnActive]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    colors[ImGuiCol_Separator]              = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
+    colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.14f, 0.44f, 0.80f, 0.78f);
+    colors[ImGuiCol_SeparatorActive]        = ImVec4(0.14f, 0.44f, 0.80f, 1.00f);
+    colors[ImGuiCol_ResizeGrip]            = ImVec4(1.00f, 1.00f, 1.00f, 0.00f);
+    colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.26f, 0.59f, 0.98f, 0.45f);
+    colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.26f, 0.59f, 0.98f, 0.78f);
+    colors[ImGuiCol_PlotLines]             = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
+    colors[ImGuiCol_PlotLinesHovered]      = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
+    colors[ImGuiCol_PlotHistogram]         = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+    colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+    colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
+    colors[ImGuiCol_ModalWindowDarkening]  = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
+    colors[ImGuiCol_DragDropTarget]         = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
+    colors[ImGuiCol_NavHighlight]           = colors[ImGuiCol_HeaderHovered];
+    colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(0.70f, 0.70f, 0.70f, 0.70f);
+}
+
 
 // Helper functions
 
