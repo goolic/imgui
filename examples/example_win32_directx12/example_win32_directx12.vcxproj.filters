@@ -24,6 +24,15 @@
     <ClInclude Include="..\imgui_impl_win32.h">
       <Filter>sources</Filter>
     </ClInclude>
+    <ClInclude Include="pch.h">
+      <Filter>sources</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui_impl_softraster.h">
+      <Filter>sources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\stb_sprintf.h">
+      <Filter>sources</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\imgui.cpp">
@@ -46,6 +55,12 @@
     </ClCompile>
     <ClCompile Include="..\..\imgui_widgets.cpp">
       <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>sources</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui_impl_softraster.cpp">
+      <Filter>sources</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
