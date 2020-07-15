@@ -108,13 +108,12 @@ typedef enum {
     SUM,
     SUBTRACTION,
     EQUALS,
-    COMMA,
-    SOMETHING
+    SOMETHING,
+    COMMA
 } operation;
 typedef enum {
     FIRST_OPERAND,
     SECOND_OPERAND,
-    SOMETHING
 } currentState;
 
 arr {
@@ -129,7 +128,7 @@ struct operands {
     f64 y = 0;
     arr xC;
     arr yC;
-    OP operador;
+    operation op;
 };
 char   buf[u8_MAX-1] =  "";
 i16 i = 0;
@@ -162,7 +161,7 @@ void makeOperand (i8 digit, struct operands& ops) {
     if (ops.xC.size || ops.yC.size < u8_MAX) {//erro, não travar por enquanto
 
 
-        if (ops.operador == FIRST_OPERAND) {
+        if (ops.op == FIRST_OPERAND) {
             if (ops.xC.size == 0) {
                 ops.xC.item[ops.xC.size] = digit;
                 ops.xC.size = ops.xC.size + 1;
@@ -174,7 +173,7 @@ void makeOperand (i8 digit, struct operands& ops) {
                 somador(ops);
             }
         }
-        if (ops.operador == SECOND_OPERAND) {
+        if (ops.op == SECOND_OPERAND) {
             ops.xC.item[ops.xC.size] = digit;
             ops.xC.size = ops.xC.size + 1;
             somador(ops);
@@ -194,7 +193,7 @@ void makeOperand (i8 digit, struct operands& ops) {
 
     //DO NOTHING, error condition
 }
-void operateOrContinue(OP operation, struct operands& ops)
+void operateOrContinue(operation op, struct operands& ops)
 {
     int blarg = 0;
 }
