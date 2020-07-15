@@ -52,10 +52,14 @@ Index of this file:
 //-----------------------------------------------------------------------------
 
 // Includes
-#include <float.h>                  // FLT_MIN, FLT_MAX
-#include <stdarg.h>                 // va_list, va_start, va_end
-#include <stddef.h>                 // ptrdiff_t, NULL
-#include <string.h>                 // memset, memmove, memcpy, strlen, strchr, strcpy, strcmp
+// #include <float.h>                  // FLT_MIN, FLT_MAX
+// #include <stdarg.h>                 // va_list, va_start, va_end
+// #if defined(_MSC_VER) && _MSC_VER <= 1500 // MSVC 2008 or earlier
+// #include <stddef.h>     // intptr_t
+// #else
+// #include <stdint.h>     // intptr_t
+// #endif
+// #include <string.h>                 // memset, memmove, memcpy, strlen, strchr, strcpy, strcmp
 
 // Version
 // (Integer encoded as XYYZZ for use in #if preprocessor conditionals. Work in progress versions typically starts at XYY99 then bounce up to XYY00, XYY01 etc. when release tagging happens)

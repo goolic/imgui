@@ -1,3 +1,4 @@
+#include "pch.h"
 // dear imgui, v1.78 WIP
 // (main code and documentation)
 
@@ -697,11 +698,11 @@ CODE
 // [SECTION] INCLUDES
 //-------------------------------------------------------------------------
 
-#if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
-#define _CRT_SECURE_NO_WARNINGS
-#endif
+// #if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
+// #define _CRT_SECURE_NO_WARNINGS
+// #endif
 
-#include "imgui.h"
+// #include "imgui.h"
 #ifndef IMGUI_DISABLE
 
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
@@ -710,40 +711,40 @@ CODE
 #include "imgui_internal.h"
 
 // System includes
-#include <ctype.h>      // toupper
-#include <stdio.h>      // vsnprintf, sscanf, printf
-#if defined(_MSC_VER) && _MSC_VER <= 1500 // MSVC 2008 or earlier
-#include <stddef.h>     // intptr_t
-#else
-#include <stdint.h>     // intptr_t
-#endif
+// #include <ctype.h>      // toupper
+// #include <stdio.h>      // vsnprintf, sscanf, printf
+// #if defined(_MSC_VER) && _MSC_VER <= 1500 // MSVC 2008 or earlier
+// #include <stddef.h>     // intptr_t
+// #else
+// #include <stdint.h>     // intptr_t
+// #endif
 
 // [Windows] OS specific includes (optional)
-#if defined(_WIN32) && defined(IMGUI_DISABLE_DEFAULT_FILE_FUNCTIONS) && defined(IMGUI_DISABLE_WIN32_DEFAULT_CLIPBOARD_FUNCTIONS) && defined(IMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
-#define IMGUI_DISABLE_WIN32_FUNCTIONS
-#endif
-#if defined(_WIN32) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#ifndef __MINGW32__
-#include <Windows.h>        // _wfopen, OpenClipboard
-#else
-#include <windows.h>
-#endif
-#if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP) // UWP doesn't have all Win32 functions
-#define IMGUI_DISABLE_WIN32_DEFAULT_CLIPBOARD_FUNCTIONS
-#define IMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS
-#endif
-#endif
+// #if defined(_WIN32) && defined(IMGUI_DISABLE_DEFAULT_FILE_FUNCTIONS) && defined(IMGUI_DISABLE_WIN32_DEFAULT_CLIPBOARD_FUNCTIONS) && defined(IMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
+// #define IMGUI_DISABLE_WIN32_FUNCTIONS
+// #endif
+// #if defined(_WIN32) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
+// #ifndef WIN32_LEAN_AND_MEAN
+// #define WIN32_LEAN_AND_MEAN
+// #endif
+// #ifndef NOMINMAX
+// #define NOMINMAX
+// #endif
+// #ifndef __MINGW32__
+// #include <Windows.h>        // _wfopen, OpenClipboard
+// #else
+// #include <windows.h>
+// #endif
+// #if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP) // UWP doesn't have all Win32 functions
+// #define IMGUI_DISABLE_WIN32_DEFAULT_CLIPBOARD_FUNCTIONS
+// #define IMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS
+// #endif
+// #endif
 
-// [Apple] OS specific includes
-#if defined(__APPLE__)
-#include <TargetConditionals.h>
-#endif
+// // [Apple] OS specific includes
+// #if defined(__APPLE__)
+// #include <TargetConditionals.h>
+// #endif
 
 // Visual Studio warnings
 #ifdef _MSC_VER
@@ -1339,10 +1340,10 @@ const char* ImStrSkipBlank(const char* str)
 // You may set IMGUI_USE_STB_SPRINTF to use our default wrapper, or set IMGUI_DISABLE_DEFAULT_FORMAT_FUNCTIONS
 // and setup the wrapper yourself. (FIXME-OPT: Some of our high-level operations such as ImGuiTextBuffer::appendfv() are
 // designed using two-passes worst case, which probably could be improved using the stbsp_vsprintfcb() function.)
-#ifdef IMGUI_USE_STB_SPRINTF
-#define STB_SPRINTF_IMPLEMENTATION
-#include "stb_sprintf.h"
-#endif
+// #ifdef IMGUI_USE_STB_SPRINTF
+// #define STB_SPRINTF_IMPLEMENTATION
+// #include "stb_sprintf.h"
+// #endif
 
 #if defined(_MSC_VER) && !defined(vsnprintf)
 #define vsnprintf _vsnprintf

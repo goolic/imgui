@@ -1,3 +1,4 @@
+#include "pch.h"
 // dear imgui, v1.78 WIP
 // (widgets code)
 
@@ -28,11 +29,14 @@ Index of this file:
 
 */
 
-#if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
-#define _CRT_SECURE_NO_WARNINGS
-#endif
+// #if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
+// #define _CRT_SECURE_NO_WARNINGS
+// #endif
 
-#include "imgui.h"
+#include <string.h>                 // memset, memmove, memcpy, strlen, strchr, strcpy, strcmp
+
+
+// #include "imgui.h"
 #ifndef IMGUI_DISABLE
 
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
@@ -40,12 +44,12 @@ Index of this file:
 #endif
 #include "imgui_internal.h"
 
-#include <ctype.h>      // toupper
-#if defined(_MSC_VER) && _MSC_VER <= 1500 // MSVC 2008 or earlier
-#include <stddef.h>     // intptr_t
-#else
-#include <stdint.h>     // intptr_t
-#endif
+// #include <ctype.h>      // toupper
+// #if defined(_MSC_VER) && _MSC_VER <= 1500 // MSVC 2008 or earlier
+// #include <stddef.h>     // intptr_t
+// #else
+// #include <stdint.h>     // intptr_t
+// #endif
 
 // Visual Studio warnings
 #ifdef _MSC_VER

@@ -1,3 +1,4 @@
+#include "pch.h"
 // dear imgui: Platform Binding for Windows (standard windows API for 32 and 64 bits applications)
 // This needs to be used along with a Renderer (e.g. DirectX11, OpenGL3, Vulkan..)
 
@@ -7,24 +8,24 @@
 //  [X] Platform: Keyboard arrays indexed using VK_* Virtual Key Codes, e.g. ImGui::IsKeyPressed(VK_SPACE).
 //  [X] Platform: Gamepad support. Enabled with 'io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad'.
 
-#include "imgui.h"
-#include "imgui_impl_win32.h"
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#include <tchar.h>
+// #include "imgui.h"
+// #include "imgui_impl_win32.h"
+// #ifndef WIN32_LEAN_AND_MEAN
+// #define WIN32_LEAN_AND_MEAN
+// #endif
+// #include <windows.h>
+// #include <tchar.h>
 
 // Using XInput library for gamepad (with recent Windows SDK this may leads to executables which won't run on Windows 7)
-#ifndef IMGUI_IMPL_WIN32_DISABLE_GAMEPAD
-#include <XInput.h>
-#else
-#define IMGUI_IMPL_WIN32_DISABLE_LINKING_XINPUT
-#endif
-#if defined(_MSC_VER) && !defined(IMGUI_IMPL_WIN32_DISABLE_LINKING_XINPUT)
-#pragma comment(lib, "xinput")
-//#pragma comment(lib, "Xinput9_1_0")
-#endif
+// #ifndef IMGUI_IMPL_WIN32_DISABLE_GAMEPAD
+// #include <XInput.h>
+// #else
+// #define IMGUI_IMPL_WIN32_DISABLE_LINKING_XINPUT
+// #endif
+// #if defined(_MSC_VER) && !defined(IMGUI_IMPL_WIN32_DISABLE_LINKING_XINPUT)
+// #pragma comment(lib, "xinput")
+// //#pragma comment(lib, "Xinput9_1_0")
+// #endif
 
 // CHANGELOG
 // (minor and older changes stripped away, please see git history for details)
@@ -59,6 +60,8 @@ static INT64                g_TicksPerSecond = 0;
 static ImGuiMouseCursor     g_LastMouseCursor = ImGuiMouseCursor_COUNT;
 static bool                 g_HasGamepad = false;
 static bool                 g_WantUpdateHasGamepad = true;
+
+
 
 // Functions
 bool    ImGui_ImplWin32_Init(void* hwnd)

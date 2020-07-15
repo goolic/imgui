@@ -43,10 +43,10 @@ Index of this file:
 #error Must include imgui.h before imgui_internal.h
 #endif
 
-#include <stdio.h>      // FILE*, sscanf
-#include <stdlib.h>     // NULL, malloc, free, qsort, atoi, atof
-#include <math.h>       // sqrtf, fabsf, fmodf, powf, floorf, ceilf, cosf, sinf
-#include <limits.h>     // INT_MIN, INT_MAX
+// #include <stdio.h>      // FILE*, sscanf
+// #include <stdlib.h>     // NULL, malloc, free, qsort, atoi, atof
+// #include <math.h>       // sqrtf, fabsf, fmodf, powf, floorf, ceilf, cosf, sinf
+// #include <limits.h>     // INT_MIN, INT_MAX
 
 // Visual Studio warnings
 #ifdef _MSC_VER

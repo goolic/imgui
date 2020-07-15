@@ -1,3 +1,4 @@
+#include "pch.h"
 // dear imgui, v1.78 WIP
 // (drawing and font code)
 
@@ -22,11 +23,11 @@ Index of this file:
 
 */
 
-#if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
-#define _CRT_SECURE_NO_WARNINGS
-#endif
+// #if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
+// #define _CRT_SECURE_NO_WARNINGS
+// #endif
 
-#include "imgui.h"
+// #include "imgui.h"
 #ifndef IMGUI_DISABLE
 
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
@@ -34,19 +35,19 @@ Index of this file:
 #endif
 #include "imgui_internal.h"
 
-#include <stdio.h>      // vsnprintf, sscanf, printf
-#if !defined(alloca)
-#if defined(__GLIBC__) || defined(__sun) || defined(__APPLE__) || defined(__NEWLIB__)
-#include <alloca.h>     // alloca (glibc uses <alloca.h>. Note that Cygwin may have _WIN32 defined, so the order matters here)
-#elif defined(_WIN32)
-#include <malloc.h>     // alloca
-#if !defined(alloca)
-#define alloca _alloca  // for clang with MS Codegen
-#endif
-#else
-#include <stdlib.h>     // alloca
-#endif
-#endif
+// #include <stdio.h>      // vsnprintf, sscanf, printf
+// #if !defined(alloca)
+// #if defined(__GLIBC__) || defined(__sun) || defined(__APPLE__) || defined(__NEWLIB__)
+// #include <alloca.h>     // alloca (glibc uses <alloca.h>. Note that Cygwin may have _WIN32 defined, so the order matters here)
+// #elif defined(_WIN32)
+// #include <malloc.h>     // alloca
+// #if !defined(alloca)
+// #define alloca _alloca  // for clang with MS Codegen
+// #endif
+// #else
+// #include <stdlib.h>     // alloca
+// #endif
+// #endif
 
 // Visual Studio warnings
 #ifdef _MSC_VER
