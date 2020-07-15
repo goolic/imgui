@@ -24,14 +24,14 @@
     <ClInclude Include="..\imgui_impl_win32.h">
       <Filter>sources</Filter>
     </ClInclude>
-    <ClInclude Include="pch.h">
-      <Filter>sources</Filter>
-    </ClInclude>
     <ClInclude Include="imgui_impl_softraster.h">
       <Filter>sources</Filter>
     </ClInclude>
     <ClInclude Include="..\..\stb_sprintf.h">
       <Filter>sources</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\gooli\AppData\Local\Packages\36828agowa338.AlpineWSL_my43bytk1c4nr\LocalState\rootfs\home\goolic\dev\imgui\examples\example_win32_directx12\pch.h">
+      <Filter>imgui</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

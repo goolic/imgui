@@ -1,14 +1,8 @@
-#include "imgui.h"
-#include "imgui_impl_win32.h"
-#include "imgui_impl_dx12.h"
-#include <d3d12.h>
-#include <dxgi1_4.h>
-#include <tchar.h>
-#include <math.h>
+#include "pch.h"
 
-#ifdef _DEBUG
+// #ifdef _DEBUG
 #define DX12_ENABLE_DEBUG_LAYER
-#endif
+// #endif
 
 #ifdef DX12_ENABLE_DEBUG_LAYER
 #include <dxgidebug.h>
@@ -90,7 +84,7 @@ void ImGui_ImplSoftraster_NewFrame()
 
 
 // Main code
-int newmain(int, char**)
+int softraster_main(int, char**)
 {
 
     // Create application window

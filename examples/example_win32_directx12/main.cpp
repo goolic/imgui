@@ -1,5 +1,7 @@
-//pch
 #include "pch.h"
+
+#define STB_SPRINTF_IMPLEMENTATION
+#include "stb_sprintf.h"
 
 // dear imgui: standalone example application for DirectX 12
 // If you are new to dear imgui, see examples/README.txt and documentation at the top of imgui.cpp.
@@ -59,8 +61,6 @@ static __int64                g_TimeAtStartup;
     
     static __int64                  g_AppCreationTime;
     static __int64                  g_AppDestructionTime;
-    #include "stb_sprintf.h"
-    #include "stdio.h"
     
 #endif
 //comentar abaixo para encerar o benchmark
@@ -173,6 +173,7 @@ void operateOrContinue(OP operation, struct operands& ops)
     int blarg =0;
 }
 
+int softraster_main(int, char**);
 // Main code
 int main(int, char**) {
     #ifdef STARTUP_BENCHMARK 
@@ -180,6 +181,12 @@ int main(int, char**) {
                 return false;
     #endif
 
+    softraster_main(1,(char**)"args");
+
+    return 0;
+}
+
+int dx12_main(int, char**){
     // Create application window
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T( "BRCalc" ), NULL };
     ::RegisterClassEx(&wc);
@@ -467,6 +474,7 @@ int main(int, char**) {
             return 0;
         #endif
 
+        return 0;
     }
 
     WaitForLastSubmittedFrame();
@@ -477,8 +485,6 @@ int main(int, char**) {
     CleanupDeviceD3D();
     ::DestroyWindow(hwnd);
     ::UnregisterClass(wc.lpszClassName, wc.hInstance);
-
-    return 0;
 }
 
 //https://github.com/ocornut/imgui/issues/707#issuecomment-636221193
