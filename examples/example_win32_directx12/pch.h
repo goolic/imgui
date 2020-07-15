@@ -102,6 +102,3 @@
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
 #endif
-
-//int main(int, char**);
-

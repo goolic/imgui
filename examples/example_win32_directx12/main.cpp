@@ -3,6 +3,21 @@
 #define STB_SPRINTF_IMPLEMENTATION
 #include "stb_sprintf.h"
 
+#define i8 signed __int8
+#define i8_MAX 127
+#define i8_MIN -128
+#define u8 unsigned __int8
+#define u8_MAX 255
+#define u8_MIN 0
+#define i16 signed __int16
+#define i16_MAX 32,767
+#define i16_MIN -32,768
+#define u16 unsigned __int16
+#define f64 double
+#define strLit const char *
+
+#define arr struct AJMVarray
+
 // dear imgui: standalone example application for DirectX 12
 // If you are new to dear imgui, see examples/README.txt and documentation at the top of imgui.cpp.
 // FIXME: 64-bit only for now! (Because sizeof(ImTextureId) == sizeof(void*))
@@ -87,8 +102,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 // os digitos tem que ser popped fo array e receberem
 // n zeros e somados ao operand
 typedef enum {
-    FIRST_OPERAND,
-    SECOND_OPERAND,
+    NONE,
     MULTIPLICATION,
     DIVISION,
     SUM,
@@ -96,26 +110,34 @@ typedef enum {
     EQUALS,
     COMMA,
     SOMETHING
-} OP;
-struct arr {
-    __int8  item[15] = { 0 };
-    __int16 size = 0;
+} operation;
+typedef enum {
+    FIRST_OPERAND,
+    SECOND_OPERAND,
+    SOMETHING
+} currentState;
+
+arr {
+    u8 item[u8_MAX-1] = { 0 };
+    u8 size = 0;
+    u8 commaPosition;
+    bool hasComma;
 };
+
 struct operands {
-    double x = 0;
-    double y = 0;
-    __int8 e = 0;
-    struct arr xC;// = component;
-    struct arr yC;// = component;
+    f64 x = 0;
+    f64 y = 0;
+    arr xC;
+    arr yC;
     OP operador;
 };
-char   buf[13] =  "";
-__int16 i = 0;
-__int64 acumulador = 0;
-char arrayS[13] = "";
+char   buf[u8_MAX-1] =  "";
+i16 i = 0;
+f64 acumulador = 0;
+char arrayS[u8_MAX-1] = "";
 static char print_buf[1024] = "";
 
-char * arrayToString(struct arr * theArr) {
+char * arrayToString(arr * theArr) {
     int ch = 0;
     for (i = 0; i != theArr->size; i = i + 1) {
         ch = theArr->item[i] + 48;
@@ -125,55 +147,62 @@ char * arrayToString(struct arr * theArr) {
 }
 void somador(struct operands& ops) {
     acumulador = 0;
-    __int32 j = 0;
-    for (i = ops.e; i >= 0 && j <= ops.e; i = i - 1) {
-        acumulador = (acumulador + (double)(ops.xC.item[i] * pow(10, j)));
+    i16 j = 0;
+    for (i = ops.xC.size; i >= 0 && j <= ops.xC.size; i = i - 1) {
+        acumulador = (acumulador + (f64)(ops.xC.item[i] * pow(10, j)));
         j = j + 1;
     }
     ops.x = acumulador;
 }
-void makeOperand (__int8 digit, struct operands& ops) {
+void makeOperand (i8 digit, struct operands& ops) {
     //pra ficar correto é necessário armazenar os digitos 
     //em um array e fazer pop deles na ordem reversa para 
     //que a unidade de cada casa esteja no lugar certo
 
+    if (ops.xC.size || ops.yC.size < u8_MAX) {//erro, não travar por enquanto
 
-    //@improvement: We can kill the need for op.e because we have arr.size now. it should be faster too !
-    if (ops.operador == FIRST_OPERAND) {
-        if (ops.e == 0) {
-            ops.xC.item[ops.e] = digit;
-            ops.xC.size = ops.xC.size + 1;
-            ops.x = digit;//(ops.x + (double)(digit * pow(10, ops.e)));
+
+        if (ops.operador == FIRST_OPERAND) {
+            if (ops.xC.size == 0) {
+                ops.xC.item[ops.xC.size] = digit;
+                ops.xC.size = ops.xC.size + 1;
+                ops.x = digit;//(ops.x + (double)(digit * pow(10, ops.e)));
+            }
+            if (ops.xC.size > 0) {
+                ops.xC.item[ops.xC.size] = digit;
+                ops.xC.size = ops.xC.size + 1;
+                somador(ops);
+            }
         }
-        if (ops.e > 0) {
-            ops.xC.item[ops.e] = digit;
+        if (ops.operador == SECOND_OPERAND) {
+            ops.xC.item[ops.xC.size] = digit;
             ops.xC.size = ops.xC.size + 1;
             somador(ops);
         }
-    }
-    if (ops.operador == SECOND_OPERAND) {
-        ops.xC.item[ops.e] = digit;
+        digit = digit + 48;
+        //const char* ascii_digit = (const char*)(digit);
+        //strncat(buf, ascii_digit,1);
+        strncat_s(buf, (const char*)&digit, 1);
         ops.xC.size = ops.xC.size + 1;
-        somador(ops);
-    }
-    digit = digit + 48;
-    //const char* ascii_digit = (const char*)(digit);
-    //strncat(buf, ascii_digit,1);
-    strncat(buf, (const char*)&digit, 1);
-    ops.e = ops.e+1;
 
-    int ret = 0;
-    auto abc = arrayToString(&ops.xC);
-    auto cba = arrayToString(&ops.yC);
-    ret = stbsp_sprintf(print_buf, "x:  %.3f\ny:  %.3f\ne:  %d\nxC: %s\nxy: %s\n ope %d", ops.x, ops.y, ops.e, abc, cba, ops.operador);
-    fwrite(print_buf, sizeof(char), ret, stdout);
+        int ret = 0;
+        auto xCstr = arrayToString(&ops.xC);
+        auto yCstr = arrayToString(&ops.yC);
+        ret = stbsp_sprintf(print_buf, "x:  %.3f\ny:  %.3f\nxC: %s\nxC.size %d\nxy: %s\nxY.size %d", ops.x, ops.y, xCstr, ops.xC.size, yCstr, ops.yC.size);
+        fwrite(print_buf, sizeof(char), ret, stdout);
+    }
+
+    //DO NOTHING, error condition
 }
 void operateOrContinue(OP operation, struct operands& ops)
 {
-    int blarg =0;
+    int blarg = 0;
 }
 
 int softraster_main(int, char**);
+void setup();
+void loop();
+int dx12_main();
 // Main code
 int main(int, char**) {
     #ifdef STARTUP_BENCHMARK 
@@ -181,12 +210,17 @@ int main(int, char**) {
                 return false;
     #endif
 
-    softraster_main(1,(char**)"args");
+    //isso foi meu chuto de como fazer funcionar
+    //o codigo original fica no .ino o arduino chama automagicamente setup e loop
+    //softraster_main(1,(char**)"args");
+    // setup();
+    // loop();
+    dx12_main();
 
     return 0;
 }
 
-int dx12_main(int, char**){
+int dx12_main(){
     // Create application window
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T( "BRCalc" ), NULL };
     ::RegisterClassEx(&wc);
@@ -234,8 +268,8 @@ int dx12_main(int, char**){
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
-    ImFont* defaultFont = io.Fonts->AddFontFromFileTTF("../../misc/fonts/Karla-Regular.ttf", 15.f);
-    ImFont* calcFont = io.Fonts->AddFontFromFileTTF("../../misc/fonts/SourceCodePro-Black.ttf", 22.f);
+    auto defaultFont = io.Fonts->AddFontFromFileTTF("../../misc/fonts/Karla-Regular.ttf", 15.f);
+    auto calcFont = io.Fonts->AddFontFromFileTTF("../../misc/fonts/SourceCodePro-Black.ttf", 22.f);
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
     //IM_ASSERT(font != NULL);
 
@@ -342,7 +376,7 @@ int dx12_main(int, char**){
 
             if (0){
             //if (op_history[cursor].op == operation.FIRST_OPERAND){
-                op_history[cursor].e = 0;
+                op_history[cursor].xC.size = 0;
                 //do i need to set the .hasFirstOperand ???
                 //pushOperandHistory
             } else {
@@ -474,7 +508,6 @@ int dx12_main(int, char**){
             return 0;
         #endif
 
-        return 0;
     }
 
     WaitForLastSubmittedFrame();
