@@ -1,5 +1,11 @@
 #include "pch.h"
-
+// TODO:
+// implement clearDisplayBuffer and make use of it
+// implement bufferToarr
+// implement calc via writing and hitting enter
+// implement android version
+// implement softraster version
+// makeOperand and operateOrContinue need to return "struct operation"
 #define STB_SPRINTF_IMPLEMENTATION
 #include "stb_sprintf.h"
 
@@ -64,6 +70,12 @@ static HANDLE                       g_hSwapChainWaitableObject = NULL;
 static ID3D12Resource*              g_mainRenderTargetResource[NUM_BACK_BUFFERS] = {};
 static D3D12_CPU_DESCRIPTOR_HANDLE  g_mainRenderTargetDescriptor[NUM_BACK_BUFFERS] = {};
 
+char   buf[u8_MAX-1] =  "";
+i16 i = 0;
+f64 accumulator = 0;
+char arrayS[u8_MAX-1] = "";
+static char print_buf[1024] = "";
+u8 base = 10;
 
 void StyleColorsDarkRed(ImGuiStyle* dst);
 void StyleColorsLightGreen(ImGuiStyle* dst);
@@ -83,6 +95,11 @@ static __int64                g_TimeAtStartup;
 
 
 // Forward declarations of helper functions
+int softraster_main(int, char**);
+char * arrayToString(arr * theArr);
+void setup();
+void loop();
+int dx12_main();
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
@@ -101,20 +118,22 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 //em um array, e uma vez que a operação fopr selecionada
 // os digitos tem que ser popped fo array e receberem
 // n zeros e somados ao operand
+BETTER_ENUM (OP_ENUM, u8, OP_NONE,
+    OP_MULTIPLICATION,
+    OP_DIVISION,
+    OP_SUM,
+    OP_SUBTRACTION,
+    OP_EQUALS,
+    OP_SOMETHING,
+    OP_COMMA)
+
 typedef enum {
-    NONE,
-    MULTIPLICATION,
-    DIVISION,
-    SUM,
-    SUBTRACTION,
-    EQUALS,
-    SOMETHING,
-    COMMA
-} operation;
-typedef enum {
-    FIRST_OPERAND,
-    SECOND_OPERAND,
-} currentState;
+    ST_FIRST_OPERAND,
+    ST_FIRST_OPER_FRACTION,
+    ST_SECOND_OPERAND,
+    ST_SECOND_OPER_FRACTION,
+    ST_RESULT_OBTAINED
+} STATE_ENUM;
 
 arr {
     u8 item[u8_MAX-1] = { 0 };
@@ -123,19 +142,41 @@ arr {
     bool hasComma;
 };
 
-struct operands {
+struct operation {
     f64 x = 0;
     f64 y = 0;
+    f64 result = 0;
     arr xC;
     arr yC;
-    operation op;
+    OP_ENUM op;
+    STATE_ENUM state;
 };
-char   buf[u8_MAX-1] =  "";
-i16 i = 0;
-f64 acumulador = 0;
-char arrayS[u8_MAX-1] = "";
-static char print_buf[1024] = "";
 
+struct charBuffer {
+    char * buf = "";
+    u16 size = 0;
+};
+
+//if maxsize==0 we use u8_MAX as the buffer sizer
+void clearDisplayBuffer(struct charBuffer display) {
+    for (i=0; i <= display.size; i = i+1){
+        display.buf = "\0";
+    }
+}
+
+void logProgress(struct operation& ops){
+    int ret = 0;
+    auto xCstr = arrayToString(&ops.xC);
+    auto yCstr = arrayToString(&ops.yC);
+    // ret = stbsp_sprintf(print_buf, "x:\ty:\txC:\txC.size\ty:\txY.size\n");
+    // fwrite(print_buf, sizeof(char), ret, stdout)
+    // ret = stbsp_sprintf(print_buf, "%.3f\t%.3f\t%s\t%d\t%s\t%d", ops.x, ops.y, xCstr, ops.xC.size, yCstr, ops.yC.size);
+    ret = stbsp_sprintf(print_buf, "\n*NOVO*\nx:  %.3f\ny:  %.3f\nresult  %.3f\nxC: %s\nxC.size %d\nxy: %s\nxY.size %d\n",
+                                            ops.x,   ops.y,   ops.result,    xCstr, ops.xC.size,  yCstr, ops.yC.size);
+    fwrite(print_buf, sizeof(char), ret, stdout);
+}
+
+//@speed we unrool this loop, since we garantee that theArr is 0 initialized
 char * arrayToString(arr * theArr) {
     int ch = 0;
     for (i = 0; i != theArr->size; i = i + 1) {
@@ -144,64 +185,133 @@ char * arrayToString(arr * theArr) {
     }
     return arrayS;
 }
-void somador(struct operands& ops) {
-    acumulador = 0;
+
+void refreshOperand(struct operation& ops) {
+    accumulator = 0;
     i16 j = 0;
-    for (i = ops.xC.size; i >= 0 && j <= ops.xC.size; i = i - 1) {
-        acumulador = (acumulador + (f64)(ops.xC.item[i] * pow(10, j)));
-        j = j + 1;
+    if (ops.state == ST_FIRST_OPERAND) {
+        for (i = ops.xC.size; i >= 0 && j <= ops.xC.size; i = i - 1) {
+            accumulator = (accumulator + (f64)(ops.xC.item[i] * pow(base, j)));
+            j = j + 1;
+        }
+        ops.x = accumulator;
     }
-    ops.x = acumulador;
+    if (ops.state == ST_SECOND_OPERAND) {
+        for (i = ops.yC.size; i >= 0 && j <= ops.yC.size; i = i - 1) {
+            accumulator = (accumulator + (f64)(ops.yC.item[i] * pow(base, j)));
+            j = j + 1;
+        }
+        ops.y = accumulator;
+    }
+    
 }
-void makeOperand (i8 digit, struct operands& ops) {
+
+void addToDisplay(u8 digit, struct operation& ops) {
+    // we convert from an int to an ascii char
+    digit = digit + 48;
+
+    //const char* ascii_digit = (const char*)(digit);
+    //strncat(buf, ascii_digit,1);
+    strncat_s(buf, (const char*)&digit, 1);
+
+    logProgress(ops);
+}
+
+f64 makeOperand (u8 digit, struct operation& ops) {
     //pra ficar correto é necessário armazenar os digitos 
     //em um array e fazer pop deles na ordem reversa para 
     //que a unidade de cada casa esteja no lugar certo
+    u8 cursor = 0;
 
     if (ops.xC.size || ops.yC.size < u8_MAX) {//erro, não travar por enquanto
 
 
-        if (ops.op == FIRST_OPERAND) {
+        if (ops.state == ST_FIRST_OPERAND) {
             if (ops.xC.size == 0) {
                 ops.xC.item[ops.xC.size] = digit;
                 ops.xC.size = ops.xC.size + 1;
                 ops.x = digit;//(ops.x + (double)(digit * pow(10, ops.e)));
+
+                addToDisplay(digit, ops);
+
+                return ops.x;
             }
             if (ops.xC.size > 0) {
                 ops.xC.item[ops.xC.size] = digit;
                 ops.xC.size = ops.xC.size + 1;
-                somador(ops);
+                refreshOperand(ops);
+
+                addToDisplay(digit, ops);
+
+                return ops.x;
             }
         }
-        if (ops.op == SECOND_OPERAND) {
-            ops.xC.item[ops.xC.size] = digit;
-            ops.xC.size = ops.xC.size + 1;
-            somador(ops);
-        }
-        digit = digit + 48;
-        //const char* ascii_digit = (const char*)(digit);
-        //strncat(buf, ascii_digit,1);
-        strncat_s(buf, (const char*)&digit, 1);
-        ops.xC.size = ops.xC.size + 1;
+        if (ops.state == ST_SECOND_OPERAND) {
+            if (ops.yC.size == 0) {
+                ops.yC.item[ops.yC.size] = digit;
+                ops.yC.size = ops.yC.size + 1;
+                ops.y = digit;//(ops.x + (double)(digit * pow(10, ops.e)));
 
-        int ret = 0;
-        auto xCstr = arrayToString(&ops.xC);
-        auto yCstr = arrayToString(&ops.yC);
-        ret = stbsp_sprintf(print_buf, "x:  %.3f\ny:  %.3f\nxC: %s\nxC.size %d\nxy: %s\nxY.size %d", ops.x, ops.y, xCstr, ops.xC.size, yCstr, ops.yC.size);
-        fwrite(print_buf, sizeof(char), ret, stdout);
+                addToDisplay(digit, ops);
+
+                return ops.y;
+            }
+            if (ops.yC.size > 0) {
+                ops.yC.item[ops.yC.size] = digit;
+                ops.yC.size = ops.yC.size + 1;
+                refreshOperand(ops);
+
+                addToDisplay(digit, ops);
+
+                return ops.y;
+            }
+        }
+        
+
     }
 
     //DO NOTHING, error condition
 }
-void operateOrContinue(operation op, struct operands& ops)
+
+void operateOrContinue(OP_ENUM op, struct operation& ops)
 {
-    int blarg = 0;
+    //do we need to do comething fancy here?
+    //if (op == OP_ENUM::OP_EQUALS._to_integral)
+
+    if (op._to_integral == OP_ENUM::OP_COMMA._to_integral) {//continue ops.state, set ops.xyC.commaPosition to ops.xyC.size
+        //@robustness we need to see if the commaposition is not off by one
+        if (ops.state == ST_FIRST_OPERAND) ops.xC.commaPosition = ops.xC.size;
+        if (ops.state == ST_SECOND_OPERAND) ops.yC.commaPosition = ops.yC.size;
+    }
+    
+    if ((ops.state == ST_FIRST_OPERAND) && (op != OP_ENUM::OP_COMMA._to_integral)) {
+        ops.state = ST_SECOND_OPERAND;
+        ops.op = op;
+    } 
+    
+    if ((ops.state == ST_SECOND_OPERAND) && (op != OP_ENUM::OP_COMMA._to_integral)) {
+        assert(ops.op != OP_ENUM::OP_NONE._to_integral);
+
+        if (op == OP_ENUM::OP_SUM._to_integral || ops.op == OP_ENUM::OP_SUM._to_integral)
+        {
+            ops.result = ops.x + ops.y;
+        }
+        if (op == OP_ENUM::OP_SUBTRACTION._to_integral || ops.op == OP_ENUM::OP_SUBTRACTION._to_integral)
+        {
+            ops.result = ops.x - ops.y;
+        }
+        if (op == OP_ENUM::OP_MULTIPLICATION._to_integral || ops.op == OP_ENUM::OP_MULTIPLICATION._to_integral)
+        {
+            ops.result = ops.x * ops.y;
+        }
+        if (op == OP_ENUM::OP_DIVISION._to_integral || ops.op == OP_ENUM::OP_DIVISION._to_integral)
+        {
+            ops.result = (double) ops.x/ops.y;
+            // ops.result += (double) ops.x%ops.y;
+        }
+    }
 }
 
-int softraster_main(int, char**);
-void setup();
-void loop();
-int dx12_main();
 // Main code
 int main(int, char**) {
     #ifdef STARTUP_BENCHMARK 
@@ -279,7 +389,7 @@ int dx12_main(){
 
     static char   hint[13] = "0";
     static double result   = 0;
-    static struct operands op_history [SHRT_MAX];
+    struct operation op_history [1024];
     static __int16 cursor = 0;
 
 
@@ -373,14 +483,6 @@ int dx12_main(){
             ImGui::PushFont(calcFont);
 
 
-            if (0){
-            //if (op_history[cursor].op == operation.FIRST_OPERAND){
-                op_history[cursor].xC.size = 0;
-                //do i need to set the .hasFirstOperand ???
-                //pushOperandHistory
-            } else {
-                //doCalc
-            }
            
             auto bSize = ImVec2(ImGui::GetWindowSize().x*0.1f, ImGui::GetWindowSize().x*0.1f);
 
@@ -393,6 +495,10 @@ int dx12_main(){
             //ImGuiInputTextFlags_EnterReturnsTrue
             //ImGuiInputTextFlags_CallbackHistory
             ImGui::PushItemWidth(160.0f);
+
+            //
+            // This is the input in which we display the number 
+            //
             ImGui::InputTextWithHint("", hint, buf, IM_ARRAYSIZE(buf));
 
             if (ImGui::Button("7",   bSize))
@@ -400,19 +506,19 @@ int dx12_main(){
             ImGui::SameLine();
             if (ImGui::Button("8",   bSize)) makeOperand(8,op_history[cursor]); ImGui::SameLine();
             if (ImGui::Button("9",   bSize)) makeOperand(9,op_history[cursor]); ImGui::SameLine();
-            if (ImGui::Button("X",   bSize)) operateOrContinue(MULTIPLICATION,op_history[cursor]);
+            if (ImGui::Button("X",   bSize)) operateOrContinue(OP_ENUM::OP_MULTIPLICATION,op_history[cursor]);
             if (ImGui::Button("4",   bSize)) makeOperand(4,op_history[cursor]); ImGui::SameLine();
             if (ImGui::Button("5",   bSize)) makeOperand(5,op_history[cursor]); ImGui::SameLine();
             if (ImGui::Button("6",   bSize)) makeOperand(6,op_history[cursor]); ImGui::SameLine();
-            if (ImGui::Button("-",   bSize)) operateOrContinue(SUBTRACTION,op_history[cursor]); 
+            if (ImGui::Button("-",   bSize)) operateOrContinue(OP_ENUM::OP_SUBTRACTION,op_history[cursor]); 
             if (ImGui::Button("1",   bSize)) makeOperand(1,op_history[cursor]); ImGui::SameLine();
             if (ImGui::Button("2",   bSize)) makeOperand(2,op_history[cursor]); ImGui::SameLine();
             if (ImGui::Button("3",   bSize)) makeOperand(3,op_history[cursor]); ImGui::SameLine();
-            if (ImGui::Button("+",   bSize)) operateOrContinue(SUM,op_history[cursor]);
-            if (ImGui::Button("+/-", bSize)) operateOrContinue(SOMETHING,op_history[cursor]); ImGui::SameLine();
+            if (ImGui::Button("+",   bSize)) operateOrContinue(OP_ENUM::OP_SUM,op_history[cursor]);
+            if (ImGui::Button("+/-", bSize)) operateOrContinue(OP_ENUM::OP_SOMETHING,op_history[cursor]); ImGui::SameLine();
             if (ImGui::Button("0",   bSize)) makeOperand(0,op_history[cursor]); ImGui::SameLine();
-            if (ImGui::Button(",",   bSize)) operateOrContinue(COMMA,op_history[cursor]); ImGui::SameLine();
-            if (ImGui::Button("=",   bSize)) operateOrContinue(EQUALS,op_history[cursor]);
+            if (ImGui::Button(",",   bSize)) operateOrContinue(OP_ENUM::OP_COMMA,op_history[cursor]); ImGui::SameLine();
+            if (ImGui::Button("=",   bSize)) operateOrContinue(OP_ENUM::OP_EQUALS,op_history[cursor]);
 
             ImGui::PopFont();
 
