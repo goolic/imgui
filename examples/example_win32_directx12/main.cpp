@@ -6,6 +6,11 @@
 // implement android version
 // implement softraster version
 // makeOperand and operateOrContinue need to return "struct operation"
+// when result is achieved we need to ++cursor and do a new operation
+// http://git.2f30.org/fortify-headers/file/README.html
+// investigate fuzzers
+// investigar zig e odin (odin parece ser mais xique e zig mais versatil)
+// vamos usar sdl pq automagicamente dá tudo, mas queremos fazer nossa própria plataforma, ver zig e odin, podemos integrar com o stdlib de um deles
 #define STB_SPRINTF_IMPLEMENTATION
 #include "stb_sprintf.h"
 
@@ -20,6 +25,7 @@
 #define i16_MIN -32,768
 #define u16 unsigned __int16
 #define f64 double
+#define BUFFER_MAX 1024
 #define strLit const char *
 
 #define arr struct AJMVarray
@@ -118,14 +124,14 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 //em um array, e uma vez que a operação fopr selecionada
 // os digitos tem que ser popped fo array e receberem
 // n zeros e somados ao operand
-BETTER_ENUM (OP_ENUM, u8, OP_NONE,
-    OP_MULTIPLICATION,
-    OP_DIVISION,
-    OP_SUM,
-    OP_SUBTRACTION,
-    OP_EQUALS,
-    OP_SOMETHING,
-    OP_COMMA)
+BETTER_ENUM (OP, u8, NONE,
+    MULTIPLICATION,
+    DIVISION,
+    SUM,
+    SUBTRACTION,
+    EQUALS,
+    SOMETHING,
+    COMMA)
 
 typedef enum {
     ST_FIRST_OPERAND,
@@ -148,19 +154,19 @@ struct operation {
     f64 result = 0;
     arr xC;
     arr yC;
-    OP_ENUM op;
-    STATE_ENUM state;
+    OP op = OP::NONE;
+    STATE_ENUM state = ST_FIRST_OPERAND;
 };
 
 struct charBuffer {
-    char * buf = "";
+    char * buf[1024] = {"\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0"};
     u16 size = 0;
 };
 
 //if maxsize==0 we use u8_MAX as the buffer sizer
-void clearDisplayBuffer(struct charBuffer display) {
+void clearDisplayBuffer(struct charBuffer& display) {
     for (i=0; i <= display.size; i = i+1){
-        display.buf = "\0";
+        display.buf[i] = "\0";
     }
 }
 
@@ -171,8 +177,8 @@ void logProgress(struct operation& ops){
     // ret = stbsp_sprintf(print_buf, "x:\ty:\txC:\txC.size\ty:\txY.size\n");
     // fwrite(print_buf, sizeof(char), ret, stdout)
     // ret = stbsp_sprintf(print_buf, "%.3f\t%.3f\t%s\t%d\t%s\t%d", ops.x, ops.y, xCstr, ops.xC.size, yCstr, ops.yC.size);
-    ret = stbsp_sprintf(print_buf, "\n*NOVO*\nx:  %.3f\ny:  %.3f\nresult  %.3f\nxC: %s\nxC.size %d\nxy: %s\nxY.size %d\n",
-                                            ops.x,   ops.y,   ops.result,    xCstr, ops.xC.size,  yCstr, ops.yC.size);
+    ret = stbsp_sprintf(print_buf, "\n*NOVO*\nx:  %.3f\ny:  %.3f\nop:  %s\nresult  %.3f\nxC: %s\nxC.size %d\nxy: %s\nxY.size %d\n",
+                                            ops.x, ops.y,ops.op._to_string(),ops.result,    xCstr, ops.xC.size,  yCstr, ops.yC.size);
     fwrite(print_buf, sizeof(char), ret, stdout);
 }
 
@@ -206,18 +212,18 @@ void refreshOperand(struct operation& ops) {
     
 }
 
-void addToDisplay(u8 digit, struct operation& ops) {
+void addToDisplay(u8 digit, struct charBuffer& display) {
     // we convert from an int to an ascii char
     digit = digit + 48;
-
+    char* buf[1024] = { "\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0","\0" };
+    char* buf2[1024] = ""
     //const char* ascii_digit = (const char*)(digit);
     //strncat(buf, ascii_digit,1);
-    strncat_s(buf, (const char*)&digit, 1);
-
-    logProgress(ops);
+    strncat_s((char*)display.buf, display.size, (const char*)&digit, sizeof(char));
+    display.size = display.size + 1;
 }
 
-f64 makeOperand (u8 digit, struct operation& ops) {
+f64 makeOperand (u8 digit, struct operation& ops, struct charBuffer& display) {
     //pra ficar correto é necessário armazenar os digitos 
     //em um array e fazer pop deles na ordem reversa para 
     //que a unidade de cada casa esteja no lugar certo
@@ -232,7 +238,8 @@ f64 makeOperand (u8 digit, struct operation& ops) {
                 ops.xC.size = ops.xC.size + 1;
                 ops.x = digit;//(ops.x + (double)(digit * pow(10, ops.e)));
 
-                addToDisplay(digit, ops);
+                addToDisplay(digit, display);
+                logProgress(ops);
 
                 return ops.x;
             }
@@ -241,7 +248,8 @@ f64 makeOperand (u8 digit, struct operation& ops) {
                 ops.xC.size = ops.xC.size + 1;
                 refreshOperand(ops);
 
-                addToDisplay(digit, ops);
+                addToDisplay(digit, display);
+                logProgress(ops);
 
                 return ops.x;
             }
@@ -252,7 +260,8 @@ f64 makeOperand (u8 digit, struct operation& ops) {
                 ops.yC.size = ops.yC.size + 1;
                 ops.y = digit;//(ops.x + (double)(digit * pow(10, ops.e)));
 
-                addToDisplay(digit, ops);
+                addToDisplay(digit, display);
+                logProgress(ops);
 
                 return ops.y;
             }
@@ -261,7 +270,8 @@ f64 makeOperand (u8 digit, struct operation& ops) {
                 ops.yC.size = ops.yC.size + 1;
                 refreshOperand(ops);
 
-                addToDisplay(digit, ops);
+                addToDisplay(digit, display);
+                logProgress(ops);
 
                 return ops.y;
             }
@@ -273,43 +283,44 @@ f64 makeOperand (u8 digit, struct operation& ops) {
     //DO NOTHING, error condition
 }
 
-void operateOrContinue(OP_ENUM op, struct operation& ops)
+void operateOrContinue(OP op, struct operation& ops, struct charBuffer& display)
 {
     //do we need to do comething fancy here?
-    //if (op == OP_ENUM::OP_EQUALS._to_integral)
+    //if (op == OP::EQUALS._to_integral)
 
-    if (op._to_integral == OP_ENUM::OP_COMMA._to_integral) {//continue ops.state, set ops.xyC.commaPosition to ops.xyC.size
+    if (op == +OP::COMMA) {//continue ops.state, set ops.xyC.commaPosition to ops.xyC.size
         //@robustness we need to see if the commaposition is not off by one
         if (ops.state == ST_FIRST_OPERAND) ops.xC.commaPosition = ops.xC.size;
         if (ops.state == ST_SECOND_OPERAND) ops.yC.commaPosition = ops.yC.size;
     }
     
-    if ((ops.state == ST_FIRST_OPERAND) && (op != OP_ENUM::OP_COMMA._to_integral)) {
+    if ((ops.state == ST_FIRST_OPERAND) && (op != +OP::COMMA)) {
         ops.state = ST_SECOND_OPERAND;
         ops.op = op;
     } 
     
-    if ((ops.state == ST_SECOND_OPERAND) && (op != OP_ENUM::OP_COMMA._to_integral)) {
-        assert(ops.op != OP_ENUM::OP_NONE._to_integral);
+    if ((ops.state == ST_SECOND_OPERAND) && (op != +OP::COMMA)) {
+        assert(ops.op != +OP::NONE);
 
-        if (op == OP_ENUM::OP_SUM._to_integral || ops.op == OP_ENUM::OP_SUM._to_integral)
+        if (op == +OP::SUM || ops.op == +OP::SUM)
         {
             ops.result = ops.x + ops.y;
         }
-        if (op == OP_ENUM::OP_SUBTRACTION._to_integral || ops.op == OP_ENUM::OP_SUBTRACTION._to_integral)
+        if (op == +OP::SUBTRACTION || ops.op == +OP::SUBTRACTION)
         {
             ops.result = ops.x - ops.y;
         }
-        if (op == OP_ENUM::OP_MULTIPLICATION._to_integral || ops.op == OP_ENUM::OP_MULTIPLICATION._to_integral)
+        if (op == +OP::MULTIPLICATION || ops.op == +OP::MULTIPLICATION)
         {
             ops.result = ops.x * ops.y;
         }
-        if (op == OP_ENUM::OP_DIVISION._to_integral || ops.op == OP_ENUM::OP_DIVISION._to_integral)
+        if (op == +OP::DIVISION || ops.op == +OP::DIVISION)
         {
             ops.result = (double) ops.x/ops.y;
             // ops.result += (double) ops.x%ops.y;
         }
     }
+    logProgress(ops);
 }
 
 // Main code
@@ -388,8 +399,11 @@ int dx12_main(){
     bool whichtheme = false;
 
     static char   hint[13] = "0";
+    charBuffer  display;
+    addToDisplay(0,display);
+
     static double result   = 0;
-    struct operation op_history [1024];
+    struct operation history [1024];// = new();
     static __int16 cursor = 0;
 
 
@@ -397,7 +411,7 @@ int dx12_main(){
 
     // Main loop
     MSG msg;
-    ZeroMemory(&msg, sizeof(msg));
+    ZeroMemory(&msg, sizeof(msg));//SecureZeroMemory https://docs.microsoft.com/en-us/previous-versions/windows/desktop/legacy/aa366877(v=vs.85)
     while (msg.message != WM_QUIT)
     {
         // Poll and handle messages (inputs, window resize, etc.)
@@ -499,26 +513,67 @@ int dx12_main(){
             //
             // This is the input in which we display the number 
             //
-            ImGui::InputTextWithHint("", hint, buf, IM_ARRAYSIZE(buf));
+            ImGui::InputTextWithHint("", hint, (char*) display.buf, display.size);
 
             if (ImGui::Button("7",   bSize))
-                makeOperand(7,op_history[cursor]);
+                makeOperand(7, history[cursor], display);
             ImGui::SameLine();
-            if (ImGui::Button("8",   bSize)) makeOperand(8,op_history[cursor]); ImGui::SameLine();
-            if (ImGui::Button("9",   bSize)) makeOperand(9,op_history[cursor]); ImGui::SameLine();
-            if (ImGui::Button("X",   bSize)) operateOrContinue(OP_ENUM::OP_MULTIPLICATION,op_history[cursor]);
-            if (ImGui::Button("4",   bSize)) makeOperand(4,op_history[cursor]); ImGui::SameLine();
-            if (ImGui::Button("5",   bSize)) makeOperand(5,op_history[cursor]); ImGui::SameLine();
-            if (ImGui::Button("6",   bSize)) makeOperand(6,op_history[cursor]); ImGui::SameLine();
-            if (ImGui::Button("-",   bSize)) operateOrContinue(OP_ENUM::OP_SUBTRACTION,op_history[cursor]); 
-            if (ImGui::Button("1",   bSize)) makeOperand(1,op_history[cursor]); ImGui::SameLine();
-            if (ImGui::Button("2",   bSize)) makeOperand(2,op_history[cursor]); ImGui::SameLine();
-            if (ImGui::Button("3",   bSize)) makeOperand(3,op_history[cursor]); ImGui::SameLine();
-            if (ImGui::Button("+",   bSize)) operateOrContinue(OP_ENUM::OP_SUM,op_history[cursor]);
-            if (ImGui::Button("+/-", bSize)) operateOrContinue(OP_ENUM::OP_SOMETHING,op_history[cursor]); ImGui::SameLine();
-            if (ImGui::Button("0",   bSize)) makeOperand(0,op_history[cursor]); ImGui::SameLine();
-            if (ImGui::Button(",",   bSize)) operateOrContinue(OP_ENUM::OP_COMMA,op_history[cursor]); ImGui::SameLine();
-            if (ImGui::Button("=",   bSize)) operateOrContinue(OP_ENUM::OP_EQUALS,op_history[cursor]);
+
+            if (ImGui::Button("8",   bSize)) 
+                makeOperand(8, history[cursor], display);
+            ImGui::SameLine();
+
+            if (ImGui::Button("9",   bSize)) 
+                makeOperand(9, history[cursor], display);
+            ImGui::SameLine();
+
+            if (ImGui::Button("X",   bSize)) 
+                operateOrContinue(OP::MULTIPLICATION,history[cursor], display);
+
+            if (ImGui::Button("4",   bSize)) 
+                makeOperand(4,history[cursor], display); 
+            ImGui::SameLine();
+            
+            if (ImGui::Button("5",   bSize)) 
+                makeOperand(5,history[cursor], display); 
+            ImGui::SameLine();
+            
+            if (ImGui::Button("6",   bSize)) 
+                makeOperand(6,history[cursor], display); 
+            ImGui::SameLine();
+            
+            if (ImGui::Button("-",   bSize)) 
+                operateOrContinue(OP::SUBTRACTION,history[cursor], display); 
+            
+            if (ImGui::Button("1",   bSize)) 
+                makeOperand(1,history[cursor], display); 
+            ImGui::SameLine();
+            
+            if (ImGui::Button("2",   bSize)) 
+                makeOperand(2,history[cursor], display); 
+            ImGui::SameLine();
+            
+            if (ImGui::Button("3",   bSize)) 
+                makeOperand(3,history[cursor], display); 
+            ImGui::SameLine();
+            
+            if (ImGui::Button("+",   bSize)) 
+                operateOrContinue(OP::SUM, history[cursor], display);
+            
+            if (ImGui::Button("+/-", bSize)) 
+                operateOrContinue(OP::SOMETHING, history[cursor], display); 
+            ImGui::SameLine();
+            
+            if (ImGui::Button("0",   bSize)) 
+                makeOperand(0, history[cursor], display); 
+            ImGui::SameLine();
+            
+            if (ImGui::Button(",",   bSize)) 
+                operateOrContinue(OP::COMMA, history[cursor], display); 
+            ImGui::SameLine();
+            
+            if (ImGui::Button("=",   bSize)) 
+                operateOrContinue(OP::EQUALS, history[cursor], display);
 
             ImGui::PopFont();
 

@@ -3,8 +3,10 @@
 #include <stdio.h>          // vsnprintf, sscanf, printf
 #include <float.h>                  // FLT_MIN, FLT_MAX
 #include <stdarg.h>                 // va_list, va_start, va_end
-#include <string.h>  
+#include <string.h> 
+#if defined(_MSC_VER) 
 #include <tchar.h>
+#endif
 #include <math.h>
 #include <ctype.h>          // toupper
 #include <limits.h>         // INT_MIN, INT_MAX
@@ -38,12 +40,15 @@
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx12.h"
-#include <d3d12.h>
-#include <dxgi1_4.h>
-#include <d3dcompiler.h>
+
 
 #ifdef _MSC_VER
-#pragma comment(lib, "d3dcompiler") // Automatically link with d3dcompiler.lib as we are using D3DCompile() below.
+	#pragma comment(lib, "d3dcompiler") // Automatically link with d3dcompiler.lib as we are using D3DCompile() below.
+	#include <d3dcompiler.h>
+
+	#include <d3d12.h>
+	#include <dxgi1_4.h>
+
 #endif
 
 
@@ -61,15 +66,16 @@
 #pragma comment(lib, "dxguid.lib")
 #endif
 
-
-#ifndef IMGUI_IMPL_WIN32_DISABLE_GAMEPAD
-#include <XInput.h>
-#else
-#define IMGUI_IMPL_WIN32_DISABLE_LINKING_XINPUT
-#endif
-#if defined(_MSC_VER) && !defined(IMGUI_IMPL_WIN32_DISABLE_LINKING_XINPUT)
-#pragma comment(lib, "xinput")
-//#pragma comment(lib, "Xinput9_1_0")
+#if defined(_MSC_VER)
+	#ifndef IMGUI_IMPL_WIN32_DISABLE_GAMEPAD
+	#include <XInput.h>
+	#else
+	#define IMGUI_IMPL_WIN32_DISABLE_LINKING_XINPUT
+	#endif
+	#if defined(_MSC_VER) && !defined(IMGUI_IMPL_WIN32_DISABLE_LINKING_XINPUT)
+		#pragma comment(lib, "xinput")
+		//#pragma comment(lib, "Xinput9_1_0")
+	#endif
 #endif
 
 

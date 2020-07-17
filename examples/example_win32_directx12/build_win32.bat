@@ -14,7 +14,7 @@ rem user configs
 rem
 
 set release=false
-set usepch=false
+set usepch=true
 set imguidir=Z:
 set pchfile=%imguidir%\examples\example_win32_directx12\debug\pch.pch
 
