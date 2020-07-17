@@ -109,3 +109,8 @@
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
 #endif
+
+
+
+#undef NOMINMAX
+#undef WIN32_LEAN_AND_MEAN
