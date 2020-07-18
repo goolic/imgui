@@ -64,13 +64,11 @@ static ID3D12Resource*              g_mainRenderTargetResource[NUM_BACK_BUFFERS]
 static D3D12_CPU_DESCRIPTOR_HANDLE  g_mainRenderTargetDescriptor[NUM_BACK_BUFFERS] = {};
 
 #define BUFFER_MAX 1024
-gbAllocator a = gb_heap_allocator();
+gbAllocator all = gb_heap_allocator();
 char   buf[U8_MAX-1] =  "";
-u16 i = 0;
-u16 j = 0;
 f64 accumulator = 0;
 char arrayS[U8_MAX-1] = "";
-gbString print_buf = gb_string_make_length(a, "", BUFFER_MAX);
+gbString print_buf = gb_string_make_length(all, "", BUFFER_MAX);
 
 static int ret;
 i32 base = 10;
@@ -179,6 +177,7 @@ void logProgress(struct operation& ops){
 
 //@speed we unrool this loop, since we garantee that theArr is 0 initialized
 char * arrayToString(arr * theArr) {
+    static u16 i = 0;
     int ch = 0;
     for (i = 0; i != theArr->size; i = i + 1) {
         ch = theArr->item[i] + 48;
@@ -189,17 +188,17 @@ char * arrayToString(arr * theArr) {
 
 void refreshOperand(struct operation& ops) {
     accumulator = 0;
-    j = 0;
+    static u16 j = 0;
+    static u16 i = 0;
     if (ops.state == +ST::FIRST_OPERAND) {
         for (i = ops.xC.size-1; i >= 0 && j <= ops.xC.size; i = i - 1) {
-            blarg = pow(base, j);
-            accumulator = (accumulator + (f64)(ops.xC.item[i] * blarg));
+            accumulator = (accumulator + (f64)(ops.xC.item[i] * pow(base, j)));
             j = j + 1;
         }
         ops.x = accumulator;
     }
     if (ops.state == +ST::SECOND_OPERAND) {
-        for (i = ops.yC.size; i >= 0 && j <= ops.yC.size; i = i - 1) {
+        for (i = ops.yC.size-1; i >= 0 && j <= ops.yC.size; i = i - 1) {
             accumulator = (accumulator + (f64)(ops.yC.item[i] * pow(base, j)));
             j = j + 1;
         }
@@ -210,11 +209,10 @@ void refreshOperand(struct operation& ops) {
 
 
 
-f64 makeOperand (i64 digit, struct operation& ops, gbString& display) {
+f64 makeOperand (u8 digit, struct operation& ops, gbString& display) {
     //pra ficar correto é necessário armazenar os digitos 
     //em um array e fazer pop deles na ordem reversa para 
     //que a unidade de cada casa esteja no lugar certo
-    u8 cursor = 0;
 
     if (ops.xC.size || ops.yC.size < U8_MAX) {//erro, não travar por enquanto
 
@@ -406,17 +404,19 @@ int dx12_main(){
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
+    //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
+
     auto defaultFont = io.Fonts->AddFontFromFileTTF("../../misc/fonts/Karla-Regular.ttf", 15.f);
     auto calcFont = io.Fonts->AddFontFromFileTTF("../../misc/fonts/SourceCodePro-Black.ttf", 22.f);
-    //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
-    //IM_ASSERT(font != NULL);
-
+    IM_ASSERT(defaultFont != NULL);
+    IM_ASSERT(calcFont != NULL);
+    
     // Our state
     bool show_demo_window = true;
     bool show_another_window = false;
     bool whichtheme = false;
 
-    gbString display = gb_string_make(a, "");
+    gbString display = gb_string_make(all, "");
     addToDisplay(0,display);
 
     static double result   = 0;
@@ -877,7 +877,7 @@ bool CreateDeviceD3D(HWND hWnd)
 
         SIZE_T rtvDescriptorSize = g_pd3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = g_pd3dRtvDescHeap->GetCPUDescriptorHandleForHeapStart();
-        for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
+        for (u32 i = 0; i < NUM_BACK_BUFFERS; i++)
         {
             g_mainRenderTargetDescriptor[i] = rtvHandle;
             rtvHandle.ptr += rtvDescriptorSize;
@@ -902,7 +902,7 @@ bool CreateDeviceD3D(HWND hWnd)
             return false;
     }
 
-    for (UINT i = 0; i < NUM_FRAMES_IN_FLIGHT; i++)
+    for (u32 i = 0; i < NUM_FRAMES_IN_FLIGHT; i++)
         if (g_pd3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&g_frameContext[i].CommandAllocator)) != S_OK)
             return false;
 
@@ -939,7 +939,7 @@ void CleanupDeviceD3D()
     CleanupRenderTarget();
     if (g_pSwapChain) { g_pSwapChain->Release(); g_pSwapChain = NULL; }
     if (g_hSwapChainWaitableObject != NULL) { CloseHandle(g_hSwapChainWaitableObject); }
-    for (UINT i = 0; i < NUM_FRAMES_IN_FLIGHT; i++)
+    for (u32 i = 0; i < NUM_FRAMES_IN_FLIGHT; i++)
         if (g_frameContext[i].CommandAllocator) { g_frameContext[i].CommandAllocator->Release(); g_frameContext[i].CommandAllocator = NULL; }
     if (g_pd3dCommandQueue) { g_pd3dCommandQueue->Release(); g_pd3dCommandQueue = NULL; }
     if (g_pd3dCommandList) { g_pd3dCommandList->Release(); g_pd3dCommandList = NULL; }
@@ -961,7 +961,7 @@ void CleanupDeviceD3D()
 
 void CreateRenderTarget()
 {
-    for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
+    for (u32 i = 0; i < NUM_BACK_BUFFERS; i++)
     {
         ID3D12Resource* pBackBuffer = NULL;
         g_pSwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
@@ -974,7 +974,7 @@ void CleanupRenderTarget()
 {
     WaitForLastSubmittedFrame();
 
-    for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
+    for (u32 i = 0; i < NUM_BACK_BUFFERS; i++)
         if (g_mainRenderTargetResource[i]) { g_mainRenderTargetResource[i]->Release(); g_mainRenderTargetResource[i] = NULL; }
 }
 
