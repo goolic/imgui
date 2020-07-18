@@ -1,4 +1,4 @@
-@echo off
+@echo on
 @REM Build for Visual Studio compiler. Run your copy of vcvars32.bat or vcvarsall.bat to setup command-line compiler.
 
 rem setar o dir padrao do cl e das sdks pra não precisar rodar o vc antes
@@ -12,7 +12,7 @@ rem
 rem user configs
 rem
 
-set clean=false
+set clean=true
 set usepch=true
 set release=false
 set imguidir=Z:
@@ -21,22 +21,22 @@ rem
 rem default configs
 rem
 
-set release_compiler_options=/MT /Fdrelease\brcalczi.pdb /Ferelease\brcalc.exe /Forelease\
-set debug_compiler_options=/MTd /Fddebug\brcalczi.pdb /Fedebug\brcalc.exe /Fodebug\
-set compiler_options=/Zi /nologo /MP /D UNICODE /D _UNICODE
+set release_compiler_options=/MT /Fd"Release\brcalczi.pdb" /Fe"Release\brcalc.exe" /Fo"Release\"
+set debug_compiler_options=/MTd /Fd"Debug\brcalczi.pdb" /Fe"Debug\brcalc.exe" /Fo"Debug\"
+set compiler_options=/GS /W4  /Zc:wchar_t  /Gm- /Od  /Zc:inline /fp:precise  /errorReport:prompt /WX- /Zc:forScope /RTC1 /arch:SSE2 /Gd /std:c++14  /EHsc  /diagnostics:column /Zi /nologo /MP /D UNICODE /D _UNICODE
 set includes=/I %imguidir%\ /I %imguidir%\examples /I %imguidir%\examples\example_win32_directx12 /I "%WindowsSdkDir%Include\um" /I "%WindowsSdkDir%Include\shared" 
 set pchfile=nul
 
 rem lets set the debug or release modes
 if %release% equ false (
-	set buildDir=%imguidir%\examples\example_win32_directx12\debug
+	set buildDir=%imguidir%\examples\example_win32_directx12\Debug
 	set pchfile=%buildDir%\pch.pch
 	
 	set compiler_options=%compiler_options% %includes% %debug_compiler_options%
 	set link_options=%link_options% %debug_link_options%
 )
 if %release% equ true (
-	set buildDir=%imguidir%\examples\example_win32_directx12\release
+	set buildDir=%imguidir%\examples\example_win32_directx12\Release
 	set pchfile=%buildDir%\pch.pch
 
 	set compiler_options=%compiler_options% %includes% %release_compiler_options%
@@ -65,8 +65,8 @@ if %clean% equ true (
 	rem echo !!!!
 	rem echo !!!! Deletando pch
 	rem echo !!!! 
-	del /s/q %buildDir%\
-	rmdir /s/q %buildDir%\
+	rem del /s/q %buildDir%\
+	rem rmdir /s/q %buildDir%\
 )
 
 mkdir %buildDir%\

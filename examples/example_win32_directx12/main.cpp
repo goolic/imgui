@@ -1,6 +1,5 @@
 #include "pch.h"
 // TODO:
-// implement gb_string_clear and make use of it
 // implement bufferToarr
 // implement calc via writing and hitting enter
 // implement android version
@@ -9,7 +8,6 @@
 // when result is achieved we need to ++cursor and do a new operation
 // http://git.2f30.org/fortify-headers/file/README.html
 // investigate fuzzers
-// investigar zig e odin (odin parece ser mais xique e zig mais versatil)
 // vamos usar sdl pq automagicamente dá tudo, mas queremos fazer nossa própria plataforma, ver zig e odin, podemos integrar com o stdlib de um deles
 #define STB_SPRINTF_IMPLEMENTATION
 #include "stb_sprintf.h"
@@ -68,7 +66,8 @@ static D3D12_CPU_DESCRIPTOR_HANDLE  g_mainRenderTargetDescriptor[NUM_BACK_BUFFER
 #define BUFFER_MAX 1024
 gbAllocator a = gb_heap_allocator();
 char   buf[U8_MAX-1] =  "";
-i16 i = 0;
+u16 i = 0;
+u16 j = 0;
 f64 accumulator = 0;
 char arrayS[U8_MAX-1] = "";
 gbString print_buf = gb_string_make_length(a, "", BUFFER_MAX);
@@ -118,7 +117,8 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 //em um array, e uma vez que a operação fopr selecionada
 // os digitos tem que ser popped fo array e receberem
 // n zeros e somados ao operand
-BETTER_ENUM (OP, u8, NONE,
+BETTER_ENUM (OP, u8,
+    NONE,
     MULTIPLICATION,
     DIVISION,
     SUM,
@@ -127,13 +127,12 @@ BETTER_ENUM (OP, u8, NONE,
     SOMETHING,
     COMMA)
 
-typedef enum {
-    ST_FIRST_OPERAND,
-    ST_FIRST_OPER_FRACTION,
-    ST_SECOND_OPERAND,
-    ST_SECOND_OPER_FRACTION,
-    ST_RESULT_OBTAINED
-} STATE_ENUM;
+BETTER_ENUM (ST, u8,
+    FIRST_OPERAND,
+    FIRST_OPER_FRACTION,
+    SECOND_OPERAND,
+    SECOND_OPER_FRACTION,
+    RESULT_OBTAINED)
 
 arr {
     u8 item[U8_MAX-1] = { 0 };
@@ -149,14 +148,14 @@ struct operation {
     arr xC;
     arr yC;
     OP op = OP::NONE;
-    STATE_ENUM state = ST_FIRST_OPERAND;
+    ST state = ST::FIRST_OPERAND;
 };
 
 void addToDisplay(u8 digit, gbString& display) {
     // we convert from an int to an ascii char
     digit = digit + 48;
 
-    gb_string_appendc(display, (const char*)&digit);
+    display = gb_string_append_length(display, (const char*) &digit, 1);
 }
 
 
@@ -190,15 +189,16 @@ char * arrayToString(arr * theArr) {
 
 void refreshOperand(struct operation& ops) {
     accumulator = 0;
-    i16 j = 0;
-    if (ops.state == ST_FIRST_OPERAND) {
-        for (i = ops.xC.size; i >= 0 && j <= ops.xC.size; i = i - 1) {
-            accumulator = (accumulator + (f64)(ops.xC.item[i] * pow(base, j)));
+    j = 0;
+    if (ops.state == +ST::FIRST_OPERAND) {
+        for (i = ops.xC.size-1; i >= 0 && j <= ops.xC.size; i = i - 1) {
+            blarg = pow(base, j);
+            accumulator = (accumulator + (f64)(ops.xC.item[i] * blarg));
             j = j + 1;
         }
         ops.x = accumulator;
     }
-    if (ops.state == ST_SECOND_OPERAND) {
+    if (ops.state == +ST::SECOND_OPERAND) {
         for (i = ops.yC.size; i >= 0 && j <= ops.yC.size; i = i - 1) {
             accumulator = (accumulator + (f64)(ops.yC.item[i] * pow(base, j)));
             j = j + 1;
@@ -219,13 +219,14 @@ f64 makeOperand (i64 digit, struct operation& ops, gbString& display) {
     if (ops.xC.size || ops.yC.size < U8_MAX) {//erro, não travar por enquanto
 
 
-        if (ops.state == ST_FIRST_OPERAND) {
+        if (ops.state == +ST::FIRST_OPERAND) {
             if (ops.xC.size == 0) {
                 ops.xC.item[ops.xC.size] = digit;
                 ops.xC.size = ops.xC.size + 1;
                 ops.x = digit;//(ops.x + (double)(digit * pow(10, ops.e)));
 
-                gb_i64_to_str(digit, display, base);
+                gb_string_clear(display);
+                addToDisplay(digit, display);
                 logProgress(ops);
 
                 return ops.x;
@@ -235,19 +236,20 @@ f64 makeOperand (i64 digit, struct operation& ops, gbString& display) {
                 ops.xC.size = ops.xC.size + 1;
                 refreshOperand(ops);
 
-                gb_i64_to_str(digit, display, base);
+                addToDisplay(digit, display);
                 logProgress(ops);
 
                 return ops.x;
             }
         }
-        if (ops.state == ST_SECOND_OPERAND) {
+        if (ops.state == +ST::SECOND_OPERAND) {
             if (ops.yC.size == 0) {
                 ops.yC.item[ops.yC.size] = digit;
                 ops.yC.size = ops.yC.size + 1;
                 ops.y = digit;//(ops.x + (double)(digit * pow(10, ops.e)));
 
-                gb_i64_to_str(digit, display, base);
+                gb_string_clear(display);
+                addToDisplay(digit, display);
                 logProgress(ops);
 
                 return ops.y;
@@ -257,7 +259,7 @@ f64 makeOperand (i64 digit, struct operation& ops, gbString& display) {
                 ops.yC.size = ops.yC.size + 1;
                 refreshOperand(ops);
 
-                gb_i64_to_str(digit, display, base);
+                addToDisplay(digit, display);
                 logProgress(ops);
 
                 return ops.y;
@@ -279,59 +281,63 @@ void operateOrContinue(OP op, struct operation& ops, gbString& display)
 
     if (op == +OP::COMMA) {//continue ops.state, set ops.xyC.commaPosition to ops.xyC.size
         //@robustness we need to see if the commaposition is not off by one
-        if (ops.state == ST_FIRST_OPERAND) {
+        if (ops.state == +ST::FIRST_OPERAND) {
                 ops.xC.commaPosition = ops.xC.size;
-                display = gb_string_appendc(display, decimalSeparator);
+                display = gb_string_append_length(display, decimalSeparator, 1);
             }
-        if (ops.state == ST_SECOND_OPERAND) {
+        if (ops.state == +ST::SECOND_OPERAND) {
             ops.yC.commaPosition = ops.yC.size;
-            display = gb_string_appendc(display, decimalSeparator);
+            display = gb_string_append_length(display, decimalSeparator, 1);
             }
     }
     
-    if ((ops.state == ST_FIRST_OPERAND) && (op != +OP::COMMA)) {
-        ops.state = ST_SECOND_OPERAND;
-        ops.op = op;
-        logProgress("cá ixtou!\n");
-        gb_string_clear(display);
-        display = gb_string_appendc(display, "0");
-    } 
-    
-    if ((ops.state == ST_SECOND_OPERAND) && (op != +OP::COMMA)) {
+    if ((ops.state == +ST::SECOND_OPERAND) && (op != +OP::COMMA)) {
         assert(ops.op != +OP::NONE);
 
         if (op == +OP::SUM || ops.op == +OP::SUM)
         {
             ops.result = ops.x + ops.y;
             gb_string_clear(display);
-            display = gb_string_append_fmt(display, "%d", ops.result);
+            display = gb_string_append_fmt(display, "%f", ops.result);
+            ops.state = ST::RESULT_OBTAINED;
         }
         if (op == +OP::SUBTRACTION || ops.op == +OP::SUBTRACTION)
         {
             ops.result = ops.x - ops.y;
             gb_string_clear(display);
             display = gb_string_append_fmt(display, "%d", ops.result);
+            ops.state = ST::RESULT_OBTAINED;
         }
         if (op == +OP::MULTIPLICATION || ops.op == +OP::MULTIPLICATION)
         {
             ops.result = ops.x * ops.y;
             gb_string_clear(display);
             display = gb_string_append_fmt(display, "%d", ops.result);
+            ops.state = ST::RESULT_OBTAINED;
         }
         if (op == +OP::DIVISION || ops.op == +OP::DIVISION)
         {
             ops.result = (double) ops.x/ops.y;
             gb_string_clear(display);
             display = gb_string_append_fmt(display, "%d", ops.result);
+            ops.state = ST::RESULT_OBTAINED;
             // ops.result += (double) ops.x%ops.y;
         }
-        if (op == +OP::EQUALS)
+        if (op == +OP::EQUALS || ops.state != +ST::RESULT_OBTAINED)
         {
-            gb_string_clear(display);
             display = gb_string_append_fmt(display, "%d", ops.result);
             // ops.result += (double) ops.x%ops.y;
         }
     }
+
+    if ((ops.state == +ST::FIRST_OPERAND) && (op != +OP::COMMA)) {
+        ops.state = +ST::SECOND_OPERAND;
+        ops.op = op;
+        logProgress("cá ixtou!\n");
+        gb_string_clear(display);
+        addToDisplay(0, display);
+    }
+
     logProgress(ops);
 }
 
@@ -410,7 +416,7 @@ int dx12_main(){
     bool show_another_window = false;
     bool whichtheme = false;
 
-    gbString display = gb_string_make_length(a, "", BUFFER_MAX);
+    gbString display = gb_string_make(a, "");
     addToDisplay(0,display);
 
     static double result   = 0;

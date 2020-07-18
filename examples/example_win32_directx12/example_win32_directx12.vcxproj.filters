@@ -30,9 +30,7 @@
     <ClInclude Include="..\..\stb_sprintf.h">
       <Filter>sources</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\gooli\AppData\Local\Packages\36828agowa338.AlpineWSL_my43bytk1c4nr\LocalState\rootfs\home\goolic\dev\imgui\examples\example_win32_directx12\pch.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
+    <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\imgui.cpp">
@@ -55,9 +53,6 @@
     </ClCompile>
     <ClCompile Include="..\..\imgui_widgets.cpp">
       <Filter>imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="pch.cpp">
-      <Filter>sources</Filter>
     </ClCompile>
     <ClCompile Include="imgui_impl_softraster.cpp">
       <Filter>sources</Filter>
