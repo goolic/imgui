@@ -1,11 +1,13 @@
 #include "pch.h"
 // TODO:
-// implement bufferToarr
+// when result is achieved we need to ++cursor and do a new operation
+// makeOperand and operateOrContinue need to return "struct operation"????
+// we need to query the window size and use it as an input to SetNextWindowSize
+// make a new windows handler and put the imgui stuff inside it.
+// we need to stop using adddigittodisplay and alway print x, y or result to the display buffer
 // implement calc via writing and hitting enter
 // implement android version
 // implement softraster version
-// makeOperand and operateOrContinue need to return "struct operation"
-// when result is achieved we need to ++cursor and do a new operation
 // http://git.2f30.org/fortify-headers/file/README.html
 // investigate fuzzers
 // vamos usar sdl pq automagicamente dá tudo, mas queremos fazer nossa própria plataforma, ver zig e odin, podemos integrar com o stdlib de um deles
@@ -491,6 +493,12 @@ int dx12_main(){
 
             //static float result = 0.0f;
             static int counter = 0;
+            
+            void          SetNextWindowPos(const ImVec2& pos, ImGuiCond cond = 0, const ImVec2& pivot = ImVec2(0, 0)); // set next window position. call before Begin(). use pivot=(0.5f,0.5f) to center on given point, etc.
+            void          SetNextWindowSize(const ImVec2& size, ImGuiCond cond = 0);                  // set next window size. set axis to 0.0f to force an auto-fit on this axis. call before Begin()
+    
+            ImGui::SetNextWindowPos(ImVec2(0,0),0,ImVec2(0,0));
+            ImGui::SetNextWindowSize(ImVec2(400,500),0);
 
             ImGui::Begin("Do your calcs here !!!");                          // Create a window called "Hello, world!" and append into it.
 
