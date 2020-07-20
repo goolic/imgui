@@ -1,4 +1,4 @@
-@echo on
+@echo off
 @REM Build for Visual Studio compiler. Run your copy of vcvars32.bat or vcvarsall.bat to setup command-line compiler.
 
 rem
@@ -37,7 +37,7 @@ rem
 
 set compile_options=/c /GS /W4 /Zc:wchar_t /Gm- /Od /Zc:inline /fp:precise /errorReport:prompt
 set compile_options=%compile_options% /WX- /Zc:forScope /RTC1 /Gd /std:c++14 /EHsc /diagnostics:column
-set compile_options=%compile_options% /Zi /nologo /MP /D UNICODE /D _UNICODE
+set compile_options=%compile_options% /Zi /FS /nologo /MP /D UNICODE /D _UNICODE
 
 set includes=/I %imguidir%\ /I %imguidir%\examples /I %imguidir%\examples\example_win32_directx12
 set includes=%includes% /I "%WindowsSdkDir%Include\um" /I "%WindowsSdkDir%Include\shared"
@@ -130,10 +130,10 @@ if %usepch% equ false (
 %compile_options%
 rem %imguidir%\examples\example_win32_directx12\imgui_impl_softraster.cpp
 
-	echo !!!
-	echo !!!
-	echo !!!
-	echo FULL COMPILE
+	rem echo !!!
+	rem echo !!!
+	rem echo !!!
+	rem echo FULL COMPILE
 )
 
 rem CREATE PCH
@@ -144,11 +144,10 @@ if %usepch% equ false (
 	%compile_options% ^
 /Ycpch.h /Fp%pchfile%
 
-
-	echo !!!
-	echo !!!
-	echo !!!
-	echo CREATE PCH
+	rem echo !!!
+	rem echo !!!
+	rem echo !!!
+	rem echo CREATE PCH
 	)
 )
 
@@ -161,10 +160,10 @@ if %usepch% equ true (
 %compile_options%
 
 
-	echo !!!
-	echo !!!
-	echo !!!
-	echo USE PCH
+	rem echo !!!
+	rem echo !!!
+	rem echo !!!
+	rem echo USE PCH
 	)
 )
 
