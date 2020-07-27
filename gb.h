@@ -9423,7 +9423,7 @@ b32 gb__platform_init(gbPlatform *p, char const *window_title, gbVideoMode mode,
 	p->window_flags  = window_flags;
 	p->window_handle = CreateWindowExW(ex_style,
 	                                   wc.lpszClassName,
-	                                   cast(wchar_t const *)gb_utf8_to_ucs2(title_buffer, gb_size_of(title_buffer), window_title),
+	                                   cast(wchar_t const *)gb_utf8_to_ucs2(title_buffer, gb_size_of(title_buffer), cast(u8 const *)window_title),
 	                                   style,
 	                                   CW_USEDEFAULT, CW_USEDEFAULT,
 	                                   wr.right - wr.left, wr.bottom - wr.top,
@@ -9862,7 +9862,7 @@ void gb_platform_set_window_title(gbPlatform *p, char const *title, ...) {
 	va_end(va);
 
 	if (str[0] != '\0') {
-		SetWindowTextW(cast(HWND)p->window_handle, cast(wchar_t const *)gb_utf8_to_ucs2(buffer, gb_size_of(buffer), str));
+		SetWindowTextW(cast(HWND)p->window_handle, cast(wchar_t const *)gb_utf8_to_ucs2(buffer, gb_size_of(buffer), cast(u8 const *)str));
 	}
 }
 
