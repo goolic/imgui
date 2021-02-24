@@ -66,6 +66,7 @@ static ID3D12Resource*              g_mainRenderTargetResource[NUM_BACK_BUFFERS]
 static D3D12_CPU_DESCRIPTOR_HANDLE  g_mainRenderTargetDescriptor[NUM_BACK_BUFFERS] = {};
 
 #define BUFFER_MAX 1024
+#define ARR_MAX 3
 gbAllocator all = gb_heap_allocator();
 char   buf[U8_MAX-1] =  "";
 f64 accumulator = 0;
@@ -73,7 +74,6 @@ char arrayS[U8_MAX-1] = "";
 gbString print_buf = gb_string_make_length(all, "", BUFFER_MAX);
 
 static int ret;
-i32 base = 10;
 
 void StyleColorsDarkRed(ImGuiStyle* dst);
 void StyleColorsLightGreen(ImGuiStyle* dst);
@@ -134,8 +134,15 @@ BETTER_ENUM (ST, u8,
     SECOND_OPER_FRACTION,
     RESULT_OBTAINED)
 
+BETTER_ENUM (BASE, u8,
+    NO_BASE,
+    BINARY=2,
+    OCTAL=8,
+    DECIMAL=10,
+    HEXADECIMAL=16)
+
 arr {
-    u8 item[U8_MAX-1] = { 0 };
+    u8 item[ARR_MAX] = { 0 };
     u8 size = 0;
     u8 commaPosition;
     bool hasComma;
@@ -145,6 +152,7 @@ struct operation {
     f64 x = 0;
     f64 y = 0;
     f64 result = 0;
+    BASE base= BASE::DECIMAL;
     arr xC;
     arr yC;
     OP op = OP::NONE;
@@ -156,6 +164,11 @@ void addToDisplay(u8 digit, gbString& display) {
     digit = digit + 48;
 
     display = gb_string_append_length(display, (const char*) &digit, 1);
+}
+
+void refreshDisplay(double number, gbString& display) {
+    //isize gb_snprintf(char *str, isize n, char const *fmt, ...) {
+    gb_snprintf(display, gb_size_of(display), "%f", number);
 }
 
 
@@ -190,19 +203,24 @@ char * arrayToString(arr * theArr) {
 
 void refreshOperand(struct operation& ops) {
     accumulator = 0;
-    static u16 j = 0;
-    static u16 i = 0;
+    u16 j = 0;
+    u16 i = 0;
     if (ops.state == +ST::FIRST_OPERAND) {
-        for (i = ops.xC.size-1; i >= 0 && j <= ops.xC.size; i = i - 1) {
-            accumulator = (accumulator + (f64)(ops.xC.item[i] * pow(base, j)));
+        i = ops.xC.size-1;
+        while(true) {
+            accumulator = (accumulator + (f64)(ops.xC.item[i] * pow(ops.base, j)));
+
+            if (i = 0) break;
+            if (j = ops.xC.size) break;
+
             j = j + 1;
-            int f;
+            i = i - 1;
         }
         ops.x = accumulator;
     }
     if (ops.state == +ST::SECOND_OPERAND) {
         for (i = ops.yC.size-1; i >= 0 && j <= ops.yC.size; i = i - 1) {
-            accumulator = (accumulator + (f64)(ops.yC.item[i] * pow(base, j)));
+            accumulator = (accumulator + (f64)(ops.yC.item[i] * pow(ops.base, j)));
             j = j + 1;
         }
         ops.y = accumulator;
@@ -217,68 +235,61 @@ f64 makeOperand (u8 digit, struct operation& ops, gbString& display) {
     //em um array e fazer pop deles na ordem reversa para 
     //que a unidade de cada casa esteja no lugar certo
 
-    if (ops.xC.size || ops.yC.size < U8_MAX) {//erro, não travar por enquanto
+    GB_ASSERT_MSG(ops.xC.size < ARR_MAX-1 || ops.yC.size < ARR_MAX-1, "Number of elements cant be higher than ARR_MAX");
 
+    if (ops.state == +ST::FIRST_OPERAND) {
+        if (ops.xC.size == 0) {
+            ops.xC.item[ops.xC.size] = digit;
+            ops.xC.size = ops.xC.size + 1;
+            ops.x = digit;//(ops.x + (double)(digit * pow(10, ops.e)));
 
-        if (ops.state == +ST::FIRST_OPERAND) {
-            if (ops.xC.size == 0) {
-                ops.xC.item[ops.xC.size] = digit;
-                ops.xC.size = ops.xC.size + 1;
-                ops.x = digit;//(ops.x + (double)(digit * pow(10, ops.e)));
+            gb_string_clear(display);
+            display = gb_string_append_fmt(display, "%f", ops.x);
+            logProgress(ops);
 
-                gb_string_clear(display);
-                addToDisplay(digit, display);
-                logProgress(ops);
-
-                return ops.x;
-            }
-            if (ops.xC.size > 0) {
-                ops.xC.item[ops.xC.size] = digit;
-                ops.xC.size = ops.xC.size + 1;
-                refreshOperand(ops);
-
-                addToDisplay(digit, display);
-                logProgress(ops);
-
-                return ops.x;
-            }
+            return ops.x;
         }
-        if (ops.state == +ST::SECOND_OPERAND) {
-            if (ops.yC.size == 0) {
-                ops.yC.item[ops.yC.size] = digit;
-                ops.yC.size = ops.yC.size + 1;
-                ops.y = digit;//(ops.x + (double)(digit * pow(10, ops.e)));
+        if (ops.xC.size > 0) {
+            ops.xC.item[ops.xC.size] = digit;
+            ops.xC.size = ops.xC.size + 1;
+            refreshOperand(ops);
 
-                gb_string_clear(display);
-                addToDisplay(digit, display);
-                logProgress(ops);
+            gb_string_clear(display);
+            display = gb_string_append_fmt(display, "%f", ops.x);
+            logProgress(ops);
 
-                return ops.y;
-            }
-            if (ops.yC.size > 0) {
-                ops.yC.item[ops.yC.size] = digit;
-                ops.yC.size = ops.yC.size + 1;
-                refreshOperand(ops);
-
-                addToDisplay(digit, display);
-                logProgress(ops);
-
-                return ops.y;
-            }
+            return ops.x;
         }
-        
-
     }
+    if (ops.state == +ST::SECOND_OPERAND) {
+        if (ops.yC.size == 0) {
+            ops.yC.item[ops.yC.size] = digit;
+            ops.yC.size = ops.yC.size + 1;
+            ops.y = digit;//(ops.x + (double)(digit * pow(10, ops.e)));
 
-    //DO NOTHING, error condition
-    GB_PANIC("Number too high!");
+            gb_string_clear(display);
+            display = gb_string_append_fmt(display, "%f", ops.y);
+            logProgress(ops);
+
+            return ops.y;
+        }
+        if (ops.yC.size > 0) {
+            ops.yC.item[ops.yC.size] = digit;
+            ops.yC.size = ops.yC.size + 1;
+            refreshOperand(ops);
+
+            gb_string_clear(display);
+            display = gb_string_append_fmt(display, "%f", ops.y);
+            logProgress(ops);
+
+            return ops.y;
+        }
+    }
+        
     return NULL;
 }
 
-void operateOrContinue(OP op, struct operation& ops, gbString& display)
-{
-    //do we need to do comething fancy here?
-    //if (op == OP::EQUALS._to_integral)
+void operateOrContinue(OP op, struct operation& ops, gbString& display) {
 
     if (op == +OP::COMMA) {//continue ops.state, set ops.xyC.commaPosition to ops.xyC.size
         //@robustness we need to see if the commaposition is not off by one
@@ -306,27 +317,27 @@ void operateOrContinue(OP op, struct operation& ops, gbString& display)
         {
             ops.result = ops.x - ops.y;
             gb_string_clear(display);
-            display = gb_string_append_fmt(display, "%d", ops.result);
+            display = gb_string_append_fmt(display, "%f", ops.result);
             ops.state = ST::RESULT_OBTAINED;
         }
         if (op == +OP::MULTIPLICATION || ops.op == +OP::MULTIPLICATION)
         {
             ops.result = ops.x * ops.y;
             gb_string_clear(display);
-            display = gb_string_append_fmt(display, "%d", ops.result);
+            display = gb_string_append_fmt(display, "%f", ops.result);
             ops.state = ST::RESULT_OBTAINED;
         }
         if (op == +OP::DIVISION || ops.op == +OP::DIVISION)
         {
             ops.result = (double) ops.x/ops.y;
             gb_string_clear(display);
-            display = gb_string_append_fmt(display, "%d", ops.result);
+            display = gb_string_append_fmt(display, "%f", ops.result);
             ops.state = ST::RESULT_OBTAINED;
             // ops.result += (double) ops.x%ops.y;
         }
         if (op == +OP::EQUALS || ops.state != +ST::RESULT_OBTAINED)
         {
-            display = gb_string_append_fmt(display, "%d", ops.result);
+            display = gb_string_append_fmt(display, "%f", ops.result);
             // ops.result += (double) ops.x%ops.y;
         }
     }
@@ -632,6 +643,23 @@ int dx12_main(){
             
             if (ImGui::Button("=",   bSize)) 
                 operateOrContinue(OP::EQUALS, history[cursor], display);
+
+            if (ImGui::Button("Binary",   bSize))
+                history[cursor].base = +BASE::BINARY;
+            ImGui::SameLine();
+
+            if (ImGui::Button("Octal",   bSize))
+                history[cursor].base = +BASE::OCTAL;
+            ImGui::SameLine();
+
+            if (ImGui::Button("Decimal",   bSize))
+                history[cursor].base = +BASE::DECIMAL;
+            ImGui::SameLine();
+
+            if (ImGui::Button("Hexadecimal",   bSize))
+                history[cursor].base = +BASE::HEXADECIMAL;
+
+
 
             ImGui::PopFont();
 
