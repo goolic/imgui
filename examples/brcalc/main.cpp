@@ -1,16 +1,29 @@
 #include "pch.h"
 // TODO:
-// when result is achieved we need to ++cursor and do a new operation
-// makeOperand and operateOrContinue need to return "struct operation"????
+
+//Vamos fazer essa porra fazer calculos básicos e passar testes. 
+//Chegando nesse ponto a gente se preocupar em deixar mais bonito e sofisticado.
+//investigar testes de interface imgui
+
+// OP ENUM has to be an element of ops
+
+// when result is achieved we need to ++ cursor and do a new operation
+
+// executeOperation and operateOrContinue need to return "struct operation"????
+
 // we need to query the window size and use it as an input to SetNextWindowSize
+
 // make a new windows handler and put the imgui stuff inside it.
+
 // we need to stop using adddigittodisplay and alway print x, y or result to the display buffer
+
 // implement calc via writing and hitting enter
+
 // implement android version
+
 // implement softraster version
 // http://git.2f30.org/fortify-headers/file/README.html
 // investigate fuzzers
-// vamos usar sdl pq automagicamente dá tudo, mas queremos fazer nossa própria plataforma, ver zig e odin, podemos integrar com o stdlib de um deles
 #define STB_SPRINTF_IMPLEMENTATION
 #include "stb_sprintf.h"
 
@@ -46,7 +59,8 @@ struct FrameContext
     UINT64                  FenceValue;
 };
 
-// Data
+//
+// Data for the DX backend
 static int const                    NUM_FRAMES_IN_FLIGHT = 3;
 static FrameContext                 g_frameContext[NUM_FRAMES_IN_FLIGHT] = {};
 static UINT                         g_frameIndex = 0;
@@ -65,59 +79,19 @@ static HANDLE                       g_hSwapChainWaitableObject = NULL;
 static ID3D12Resource*              g_mainRenderTargetResource[NUM_BACK_BUFFERS] = {};
 static D3D12_CPU_DESCRIPTOR_HANDLE  g_mainRenderTargetDescriptor[NUM_BACK_BUFFERS] = {};
 
+//
+// BRCalc data
 #define BUFFER_MAX 1024
 #define ARR_MAX 3
-gbAllocator all = gb_heap_allocator();
-char   buf[U8_MAX-1] =  "";
-f64 accumulator = 0;
-char arrayS[U8_MAX-1] = "";
-gbString print_buf = gb_string_make_length(all, "", BUFFER_MAX);
+static  gbAllocator all = gb_heap_allocator();
+static char   buf[U8_MAX-1] =  "";
+static f64 accumulator = 0;
+static char arrayS[U8_MAX-1] = "";
+static gbString print_buf = gb_string_make_length(all, "", BUFFER_MAX);
 
 static int ret;
 
-void StyleColorsDarkRed(ImGuiStyle* dst);
-void StyleColorsLightGreen(ImGuiStyle* dst);
-
-static __int64                g_Time;
-static __int64                g_TicksPerSecond;
-static __int64                g_TimeAtStartup;
-#ifndef STARTUP_BENCHMARK 
-    #define STARTUP_BENCHMARK
-    
-    static __int64                  g_AppCreationTime;
-    static __int64                  g_AppDestructionTime;
-    
-#endif
-//comentar abaixo para encerar o benchmark
-#undef STARTUP_BENCHMARK
-
-
-// Forward declarations of helper functions
-int softraster_main(int, char**);
-char* arrayToString(arr * theArr);
-char const* decimalSeparator = (char const*)',';
-void setup();
-void loop();
-int dx12_main();
-bool CreateDeviceD3D(HWND hWnd);
-void CleanupDeviceD3D();
-void CreateRenderTarget();
-void CleanupRenderTarget();
-void WaitForLastSubmittedFrame();
-FrameContext* WaitForNextFrameResources();
-void ResizeSwapChain(HWND hWnd, int width, int height);
-LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
-//se o usurari clicar em 1 botao temos de multiplicar o valor 
-//pela casa decimal em que estamos, adicionando o valor.
-//se clicar 7 operand recebe 7*1, se clicar em seguida
-//no 8 operand recebe 7*10 + 8*1 e se por fim clicar em 3,
-//recebera 7*100 + 8*10 + 3 * 1
-// queremos que primeiro os digitos sejam adicionados
-//em um array, e uma vez que a operação fopr selecionada
-// os digitos tem que ser popped fo array e receberem
-// n zeros e somados ao operand
-BETTER_ENUM (OP, u8,
+BETTER_ENUM (OPERATION, u8,
     NONE,
     MULTIPLICATION,
     DIVISION,
@@ -125,14 +99,18 @@ BETTER_ENUM (OP, u8,
     SUBTRACTION,
     EQUALS,
     SOMETHING,
-    COMMA)
+    COMMA_FOUND,
+    COMMA_SET)
+#define OP OPERATION
 
-BETTER_ENUM (ST, u8,
+
+BETTER_ENUM (STATE, u8,
     FIRST_OPERAND,
     FIRST_OPER_FRACTION,
     SECOND_OPERAND,
     SECOND_OPER_FRACTION,
     RESULT_OBTAINED)
+#define ST STATE
 
 BETTER_ENUM (BASE, u8,
     NO_BASE,
@@ -159,14 +137,79 @@ struct operation {
     ST state = ST::FIRST_OPERAND;
 };
 
+//
+//BENCHMARK
+static __int64                g_Time;
+static __int64                g_TicksPerSecond;
+static __int64                g_TimeAtStartup;
+#ifndef STARTUP_BENCHMARK 
+    #define STARTUP_BENCHMARK
+    
+    static __int64                  g_AppCreationTime;
+    static __int64                  g_AppDestructionTime;
+    
+#endif
+//The line bellow deactivates this benchmark
+#undef STARTUP_BENCHMARK
+
+//
+//Test the hell out of things !
+#ifndef TEST_BRCALC 
+    #define TEST_BRCALC
+
+    void test_just_one_time() {
+        executeOperation(3,history[cursor], display); 
+        operateOrContinue(OP::SUM, history[cursor], display);
+        executeOperation(3,history[cursor], display);
+
+        executeOperation(3,history[cursor], display); 
+        operateOrContinue(OP::MULTIPLICATION, history[cursor], display);
+        executeOperation(3,history[cursor], display); 
+
+        executeOperation(3,history[cursor], display); 
+        operateOrContinue(OP::DIVISION, history[cursor], display);
+        executeOperation(3,history[cursor], display);
+
+        executeOperation(3,history[cursor], display); 
+        operateOrContinue(OP::SUBTRACTION, history[cursor], display);
+        executeOperation(3,history[cursor], display); 
+    }
+#endif
+
+// Forward declarations of helper functions
+int softraster_main(int, char**);
+char* arrayToString(arr * theArr);
+char const* decimalSeparator = (char const*)',';
+void setup();
+void loop();
+int dx12_main();
+bool CreateDeviceD3D(HWND hWnd);
+void CleanupDeviceD3D();
+void CreateRenderTarget();
+void CleanupRenderTarget();
+void WaitForLastSubmittedFrame();
+FrameContext* WaitForNextFrameResources();
+void ResizeSwapChain(HWND hWnd, int width, int height);
+LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+//imGui style
+void StyleColorsDarkRed(ImGuiStyle* dst);
+void StyleColorsLightGreen(ImGuiStyle* dst);
+
+
+
+
 void addToDisplay(u8 digit, gbString& display) {
-    // we convert from an int to an ascii char
+    //convert from an int to an ascii char
     digit = digit + 48;
+
+    //TODO: kill this and use only refreshDisplay
 
     display = gb_string_append_length(display, (const char*) &digit, 1);
 }
 
 void refreshDisplay(double number, gbString& display) {
+    //TODO: switch so that %d and %f are both possible
     //isize gb_snprintf(char *str, isize n, char const *fmt, ...) {
     gb_snprintf(display, gb_size_of(display), "%f", number);
 }
@@ -201,27 +244,37 @@ char * arrayToString(arr * theArr) {
     return arrayS;
 }
 
+
+//se o usuario clicar em 1 botao temos de multiplicar o valor 
+//pela casa decimal em que estamos, adicionando o valor.
+//se clicar 7 operand recebe 7*1, se clicar em seguida
+//no 8 operand recebe 7*10 + 8*1 e se por fim clicar em 3,
+//recebera 7*100 + 8*10 + 3 * 1
+// queremos que primeiro os digitos sejam adicionados
+//em um array, e uma vez que a operação for selecionada
+// os digitos tem que ser popped do array e receberem
+// n zeros e somados ao operand
 void refreshOperand(struct operation& ops) {
     accumulator = 0;
-    u16 j = 0;
-    u16 i = 0;
+    u16 powOrder = 0;
+    u16 cursor = 0;
     if (ops.state == +ST::FIRST_OPERAND) {
-        i = ops.xC.size-1;
+        cursor = ops.xC.size-1;
         while(true) {
-            accumulator = (accumulator + (f64)(ops.xC.item[i] * pow(ops.base, j)));
+            accumulator = (accumulator + (f64)(ops.xC.item[cursor] * pow(ops.base, powOrder)));
 
-            if (i = 0) break;
-            if (j = ops.xC.size) break;
+            if (cursor == 0) break;
+            if (powOrder == ops.xC.size) break;
 
-            j = j + 1;
-            i = i - 1;
+            powOrder = powOrder + 1;
+            cursor = cursor - 1;
         }
         ops.x = accumulator;
     }
     if (ops.state == +ST::SECOND_OPERAND) {
-        for (i = ops.yC.size-1; i >= 0 && j <= ops.yC.size; i = i - 1) {
-            accumulator = (accumulator + (f64)(ops.yC.item[i] * pow(ops.base, j)));
-            j = j + 1;
+        for (\cursor = ops.yC.size-1; cursor >= 0 && powOrder <= ops.yC.size3; cursor = cursor - 1) {
+            accumulator = (accumulator + (f64)(ops.yC.item[cursor] * pow(ops.base, powOrder)));
+            powOrder = powOrder + 1;
         }
         ops.y = accumulator;
     }
@@ -230,14 +283,15 @@ void refreshOperand(struct operation& ops) {
 
 
 
-f64 makeOperand (u8 digit, struct operation& ops, gbString& display) {
+f64 executeOperation (u8 digit, struct operation& ops, gbString& display) {
     //pra ficar correto é necessário armazenar os digitos 
     //em um array e fazer pop deles na ordem reversa para 
     //que a unidade de cada casa esteja no lugar certo
 
-    GB_ASSERT_MSG(ops.xC.size < ARR_MAX-1 || ops.yC.size < ARR_MAX-1, "Number of elements cant be higher than ARR_MAX");
+    GB_ASSERT_MSG(ops.xC.size < ARR_MAX-1 || ops.yC.size < ARR_MAX-1, "Number of elements can't be higher than ARR_MAX");
 
     if (ops.state == +ST::FIRST_OPERAND) {
+        //first time
         if (ops.xC.size == 0) {
             ops.xC.item[ops.xC.size] = digit;
             ops.xC.size = ops.xC.size + 1;
@@ -262,6 +316,7 @@ f64 makeOperand (u8 digit, struct operation& ops, gbString& display) {
         }
     }
     if (ops.state == +ST::SECOND_OPERAND) {
+        //first time
         if (ops.yC.size == 0) {
             ops.yC.item[ops.yC.size] = digit;
             ops.yC.size = ops.yC.size + 1;
@@ -289,9 +344,10 @@ f64 makeOperand (u8 digit, struct operation& ops, gbString& display) {
     return NULL;
 }
 
+//if its a comma we save the current position else we do the operation or go to the second operand
 void operateOrContinue(OP op, struct operation& ops, gbString& display) {
 
-    if (op == +OP::COMMA) {//continue ops.state, set ops.xyC.commaPosition to ops.xyC.size
+    if (op == +OP::COMMA_FOUND) {//continue ops.state, set ops.xyC.commaPosition to ops.xyC.size
         //@robustness we need to see if the commaposition is not off by one
         if (ops.state == +ST::FIRST_OPERAND) {
                 ops.xC.commaPosition = ops.xC.size;
@@ -301,9 +357,10 @@ void operateOrContinue(OP op, struct operation& ops, gbString& display) {
             ops.yC.commaPosition = ops.yC.size;
             display = gb_string_append_length(display, decimalSeparator, 1);
             }
+        op = +OP::COMMA_SET;
     }
     
-    if ((ops.state == +ST::SECOND_OPERAND) && (op != +OP::COMMA)) {
+    if ((ops.state == +ST::SECOND_OPERAND) && (op != +OP::COMMA_FOUND)) {
         assert(ops.op != +OP::NONE);
 
         if (op == +OP::SUM || ops.op == +OP::SUM)
@@ -314,7 +371,7 @@ void operateOrContinue(OP op, struct operation& ops, gbString& display) {
             ops.state = ST::RESULT_OBTAINED;
         }
         if (op == +OP::SUBTRACTION || ops.op == +OP::SUBTRACTION)
-        {
+mde        {
             ops.result = ops.x - ops.y;
             gb_string_clear(display);
             display = gb_string_append_fmt(display, "%f", ops.result);
@@ -342,7 +399,7 @@ void operateOrContinue(OP op, struct operation& ops, gbString& display) {
         }
     }
 
-    if ((ops.state == +ST::FIRST_OPERAND) && (op != +OP::COMMA)) {
+    if ((ops.state == +ST::FIRST_OPERAND) && (op != +OP::COMMA_FOUND)) {
         ops.state = +ST::SECOND_OPERAND;
         ops.op = op;
         logProgress("cá ixtou!\n");
@@ -360,11 +417,13 @@ int main(int, char**) {
                 return false;
     #endif
 
-    //isso foi meu chuto de como fazer funcionar
+    //isso foi meu chute de como fazer funcionar a versão android !
     //o codigo original fica no .ino o arduino chama automagicamente setup e loop
     //softraster_main(1,(char**)"args");
     // setup();
     // loop();
+
+
     dx12_main();
 
     return 0;
@@ -585,45 +644,45 @@ int dx12_main(){
             ImGui::InputTextWithHint("", display, display, gb_strlen(display));
 
             if (ImGui::Button("7",   bSize))
-                makeOperand(7, history[cursor], display);
+                executeOperation(7, history[cursor], display);
             ImGui::SameLine();
 
             if (ImGui::Button("8",   bSize)) 
-                makeOperand(8, history[cursor], display);
+                executeOperation(8, history[cursor], display);
             ImGui::SameLine();
 
             if (ImGui::Button("9",   bSize)) 
-                makeOperand(9, history[cursor], display);
+                executeOperation(9, history[cursor], display);
             ImGui::SameLine();
 
             if (ImGui::Button("X",   bSize)) 
                 operateOrContinue(OP::MULTIPLICATION,history[cursor], display);
 
             if (ImGui::Button("4",   bSize)) 
-                makeOperand(4,history[cursor], display); 
+                executeOperation(4,history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("5",   bSize)) 
-                makeOperand(5,history[cursor], display); 
+                executeOperation(5,history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("6",   bSize)) 
-                makeOperand(6,history[cursor], display); 
+                executeOperation(6,history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("-",   bSize)) 
                 operateOrContinue(OP::SUBTRACTION,history[cursor], display); 
             
             if (ImGui::Button("1",   bSize)) 
-                makeOperand(1,history[cursor], display); 
+                executeOperation(1,history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("2",   bSize)) 
-                makeOperand(2,history[cursor], display); 
+                executeOperation(2,history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("3",   bSize)) 
-                makeOperand(3,history[cursor], display); 
+                executeOperation(3,history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("+",   bSize)) 
@@ -634,11 +693,11 @@ int dx12_main(){
             ImGui::SameLine();
             
             if (ImGui::Button("0",   bSize)) 
-                makeOperand(0, history[cursor], display); 
+                executeOperation(0, history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button(",",   bSize)) 
-                operateOrContinue(OP::COMMA, history[cursor], display); 
+                operateOrContinue(OP::COMMA_FOUND, history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("=",   bSize)) 
@@ -670,7 +729,11 @@ int dx12_main(){
 
         }
 
-        // Rendering
+        //*******************
+        //*                 *
+        //**** Rendering ****
+        //*                 *
+        //*******************
         FrameContext* frameCtxt = WaitForNextFrameResources();
         UINT backBufferIdx = g_pSwapChain->GetCurrentBackBufferIndex();
         frameCtxt->CommandAllocator->Reset();
@@ -706,7 +769,7 @@ int dx12_main(){
         frameCtxt->FenceValue = fenceValue;
 
         
-        //manter desativado, benchmark de startup, vai encerrar app depois de um único frame
+        //benchmark de startup, vai encerrar app depois de um único frame
         #ifdef STARTUP_BENCHMARK
 
             __int64 TicksPerSecond;
@@ -754,7 +817,11 @@ int dx12_main(){
             return 0;
         #endif
 
-    }
+    }//end of main loop
+
+#ifdef TEST_BRCALC
+    test_just_one_time();
+#endif
 
     WaitForLastSubmittedFrame();
     ImGui_ImplDX12_Shutdown();
@@ -1143,3 +1210,5 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     return ::DefWindowProc(hWnd, msg, wParam, lParam);
 }
+
+#undef TEST_BRCALC
