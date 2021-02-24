@@ -157,24 +157,10 @@ static __int64                g_TimeAtStartup;
 #ifndef TEST_BRCALC 
     #define TEST_BRCALC
 
-    void test_just_one_time() {
-        executeOperation(3,history[cursor], display); 
-        operateOrContinue(OP::SUM, history[cursor], display);
-        executeOperation(3,history[cursor], display);
-
-        executeOperation(3,history[cursor], display); 
-        operateOrContinue(OP::MULTIPLICATION, history[cursor], display);
-        executeOperation(3,history[cursor], display); 
-
-        executeOperation(3,history[cursor], display); 
-        operateOrContinue(OP::DIVISION, history[cursor], display);
-        executeOperation(3,history[cursor], display);
-
-        executeOperation(3,history[cursor], display); 
-        operateOrContinue(OP::SUBTRACTION, history[cursor], display);
-        executeOperation(3,history[cursor], display); 
-    }
+    void test_just_one_time();
 #endif
+
+    
 
 // Forward declarations of helper functions
 int softraster_main(int, char**);
@@ -229,7 +215,7 @@ void logProgress(struct operation& ops){
     // fwrite(print_buf, sizeof(char), ret, stdout)
     // ret = stbsp_sprintf(print_buf, "%.3f\t%.3f\t%s\t%d\t%s\t%d", ops.x, ops.y, xCstr, ops.xC.size, yCstr, ops.yC.size);
     ret = stbsp_sprintf(print_buf, "\n*NOVO*\nx:  %.3f\ny:  %.3f\nop:  %s\nresult  %.3f\nxC: %s\nxC.size %d\nxy: %s\nxY.size %d\n",
-                                            ops.x, ops.y,ops.op._to_string(),ops.result,    xCstr, ops.xC.size,  yCstr, ops.yC.size);
+                                            ops.x, ops.y,ops.op._to_string(), ops.result,    xCstr, ops.xC.size,  yCstr, ops.yC.size);
     fwrite(print_buf, sizeof(char), ret, stdout);
 }
 
@@ -272,7 +258,7 @@ void refreshOperand(struct operation& ops) {
         ops.x = accumulator;
     }
     if (ops.state == +ST::SECOND_OPERAND) {
-        for (\cursor = ops.yC.size-1; cursor >= 0 && powOrder <= ops.yC.size3; cursor = cursor - 1) {
+        for (cursor = ops.yC.size-1; cursor >= 0 && powOrder <= ops.yC.size; cursor = cursor - 1) {
             accumulator = (accumulator + (f64)(ops.yC.item[cursor] * pow(ops.base, powOrder)));
             powOrder = powOrder + 1;
         }
@@ -352,12 +338,16 @@ void operateOrContinue(OP op, struct operation& ops, gbString& display) {
         if (ops.state == +ST::FIRST_OPERAND) {
                 ops.xC.commaPosition = ops.xC.size;
                 display = gb_string_append_length(display, decimalSeparator, 1);
+                op = +OP::COMMA_SET;
+                logProgress(ops);
             }
         if (ops.state == +ST::SECOND_OPERAND) {
             ops.yC.commaPosition = ops.yC.size;
             display = gb_string_append_length(display, decimalSeparator, 1);
+            op = +OP::COMMA_SET;
+            logProgress(ops);
             }
-        op = +OP::COMMA_SET;
+        
     }
     
     if ((ops.state == +ST::SECOND_OPERAND) && (op != +OP::COMMA_FOUND)) {
@@ -369,13 +359,15 @@ void operateOrContinue(OP op, struct operation& ops, gbString& display) {
             gb_string_clear(display);
             display = gb_string_append_fmt(display, "%f", ops.result);
             ops.state = ST::RESULT_OBTAINED;
+            logProgress(ops);
         }
         if (op == +OP::SUBTRACTION || ops.op == +OP::SUBTRACTION)
-mde        {
+        {
             ops.result = ops.x - ops.y;
             gb_string_clear(display);
             display = gb_string_append_fmt(display, "%f", ops.result);
             ops.state = ST::RESULT_OBTAINED;
+            logProgress(ops);
         }
         if (op == +OP::MULTIPLICATION || ops.op == +OP::MULTIPLICATION)
         {
@@ -383,6 +375,7 @@ mde        {
             gb_string_clear(display);
             display = gb_string_append_fmt(display, "%f", ops.result);
             ops.state = ST::RESULT_OBTAINED;
+            logProgress(ops);
         }
         if (op == +OP::DIVISION || ops.op == +OP::DIVISION)
         {
@@ -391,11 +384,14 @@ mde        {
             display = gb_string_append_fmt(display, "%f", ops.result);
             ops.state = ST::RESULT_OBTAINED;
             // ops.result += (double) ops.x%ops.y;
+            logProgress(ops);
         }
         if (op == +OP::EQUALS || ops.state != +ST::RESULT_OBTAINED)
         {
             display = gb_string_append_fmt(display, "%f", ops.result);
             // ops.result += (double) ops.x%ops.y;
+            ops.state = ST::RESULT_OBTAINED;
+            logProgress(ops);
         }
     }
 
@@ -407,7 +403,7 @@ mde        {
         addToDisplay(0, display);
     }
 
-    logProgress(ops);
+    
 }
 
 // Main code
@@ -520,6 +516,10 @@ int dx12_main(){
 
 
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+#ifdef TEST_BRCALC
+    test_just_one_time();
+#endif
 
     // Main loop
     MSG msg;
@@ -819,9 +819,7 @@ int dx12_main(){
 
     }//end of main loop
 
-#ifdef TEST_BRCALC
-    test_just_one_time();
-#endif
+
 
     WaitForLastSubmittedFrame();
     ImGui_ImplDX12_Shutdown();
@@ -1210,5 +1208,39 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     return ::DefWindowProc(hWnd, msg, wParam, lParam);
 }
+
+#ifdef TEST_BRCALC
+void test_just_one_time() {
+
+        struct operation history [1024];// = new();
+        static __int16 cursor = 0;
+        gbString display = gb_string_make(all, "");
+
+
+
+        // executeOperation(3,history[cursor], display); 
+        // operateOrContinue(OP::SUM, history[cursor], display);
+        // executeOperation(3,history[cursor], display);
+        // operateOrContinue(OP::EQUALS, history[cursor], display);
+
+        executeOperation(3,history[cursor], display); 
+        operateOrContinue(OP::SUM, history[cursor], display);
+        executeOperation(4,history[cursor], display);
+        operateOrContinue(OP::SUM, history[cursor], display);
+        executeOperation(5,history[cursor], display);
+
+        // executeOperation(3,history[cursor], display); 
+        // operateOrContinue(OP::MULTIPLICATION, history[cursor], display);
+        // executeOperation(3,history[cursor], display); 
+
+        // executeOperation(3,history[cursor], display); 
+        // operateOrContinue(OP::DIVISION, history[cursor], display);
+        // executeOperation(3,history[cursor], display);
+
+        // executeOperation(3,history[cursor], display); 
+        // operateOrContinue(OP::SUBTRACTION, history[cursor], display);
+        // executeOperation(3,history[cursor], display); 
+    }
+#endif
 
 #undef TEST_BRCALC
