@@ -44,6 +44,8 @@
     <IntDir>$(ProjectDir)$(Configuration)\</IntDir>
     <GenerateManifest>false</GenerateManifest>
     <TargetName>brcalc</TargetName>
+    <PreBuildEventUseInBuild>false</PreBuildEventUseInBuild>
+    <PreLinkEventUseInBuild>false</PreLinkEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='release|x64'">
     <OutDir>$(ProjectDir)$(Configuration)\</OutDir>
@@ -56,7 +58,6 @@
       <AdditionalIncludeDirectories>.;..\..;..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <RuntimeLibrary>MultiThreadeddebug</RuntimeLibrary>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp14</LanguageStandard>
@@ -65,7 +66,8 @@
       <SupportJustMyCode>false</SupportJustMyCode>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <UseFullPaths>false</UseFullPaths>
-      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>
+      </AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
@@ -73,9 +75,12 @@
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <SubSystem>Console</SubSystem>
       <ShowProgress>LinkVerbose</ShowProgress>
-      <OutputFile>$(OutDir)brcalc.exe</OutputFile>
+      <OutputFile>$(OutDir)brcalc_VS.exe</OutputFile>
       <ProgramDatabaseFile>$(OutDir)brcalc.pdb</ProgramDatabaseFile>
     </Link>
+    <CustomBuildStep>
+      <Command>build_win32.bat</Command>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='release|x64'">
     <ClCompile>
@@ -105,37 +110,38 @@
     <ClInclude Include="imgui_impl_softraster.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\imgui.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='debug|x64'">false</ExcludedFromBuild>
+    <CustomBuild Include="..\..\imgui.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='debug|x64'">true</ExcludedFromBuild>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='debug|x64'">Create</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\imgui_demo.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='debug|x64'">false</ExcludedFromBuild>
+    </CustomBuild>
+    <CustomBuild Include="..\..\imgui_demo.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='debug|x64'">true</ExcludedFromBuild>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='debug|x64'">Create</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\imgui_draw.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='debug|x64'">false</ExcludedFromBuild>
+    </CustomBuild>
+    <CustomBuild Include="..\..\imgui_draw.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='debug|x64'">true</ExcludedFromBuild>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='debug|x64'">Create</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\imgui_widgets.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='debug|x64'">false</ExcludedFromBuild>
+    </CustomBuild>
+    <CustomBuild Include="..\..\imgui_widgets.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='debug|x64'">true</ExcludedFromBuild>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='debug|x64'">Create</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\imgui_impl_dx12.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='debug|x64'">false</ExcludedFromBuild>
+    </CustomBuild>
+    <CustomBuild Include="..\imgui_impl_dx12.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='debug|x64'">true</ExcludedFromBuild>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='debug|x64'">Create</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\imgui_impl_win32.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='debug|x64'">false</ExcludedFromBuild>
+    </CustomBuild>
+    <CustomBuild Include="..\imgui_impl_win32.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='debug|x64'">true</ExcludedFromBuild>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='debug|x64'">Create</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="imgui_impl_softraster.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='debug|x64'">false</ExcludedFromBuild>
+    </CustomBuild>
+    <CustomBuild Include="imgui_impl_softraster.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='debug|x64'">true</ExcludedFromBuild>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='debug|x64'">Create</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="main.cpp">
+    </CustomBuild>
+    <CustomBuild Include="main.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='debug|x64'">Use</PrecompiledHeader>
-    </ClCompile>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='debug|x64'">true</ExcludedFromBuild>
+    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\README.txt" />
