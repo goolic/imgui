@@ -2,14 +2,13 @@
 // TODO:
 
 //Vamos fazer essa porra fazer calculos básicos e passar testes. 
-//Chegando nesse ponto a gente se preocupar em deixar mais bonito e sofisticado.
-//investigar testes de interface imgui
+//Chegando nesse ponto a gente se preocupa em deixar mais bonito e sofisticado.
 
 // OP ENUM has to be an element of ops
 
 // when result is achieved we need to ++ cursor and do a new operation
 
-// executeOperation and operateOrContinue need to return "struct operation"????
+// assembleOperator and operateOrContinue need to return "struct operation"????
 
 // we need to query the window size and use it as an input to SetNextWindowSize
 
@@ -268,63 +267,38 @@ void refreshOperand(struct operation& ops) {
 }
 
 
-
-f64 executeOperation (u8 digit, struct operation& ops, gbString& display) {
+// The objective of this function is to assemble an operator whenever there are multiple digits
+f64 assembleOperator (u8 digit, struct operation& ops, gbString& display) {
     //pra ficar correto é necessário armazenar os digitos 
     //em um array e fazer pop deles na ordem reversa para 
     //que a unidade de cada casa esteja no lugar certo
 
     GB_ASSERT_MSG(ops.xC.size < ARR_MAX-1 || ops.yC.size < ARR_MAX-1, "Number of elements can't be higher than ARR_MAX");
 
+    if (digit == 5)
+        printf("stop here\n");
+
     if (ops.state == +ST::FIRST_OPERAND) {
-        //first time
-        if (ops.xC.size == 0) {
-            ops.xC.item[ops.xC.size] = digit;
-            ops.xC.size = ops.xC.size + 1;
-            ops.x = digit;//(ops.x + (double)(digit * pow(10, ops.e)));
+        ops.xC.item[ops.xC.size] = digit;
+        ops.xC.size = ops.xC.size + 1;
+        ops.x = (ops.x + (double)(digit * pow(10, ops.e)));
 
-            gb_string_clear(display);
-            display = gb_string_append_fmt(display, "%f", ops.x);
-            logProgress(ops);
+        gb_string_clear(display);
+        display = gb_string_append_fmt(display, "%f", ops.x);
+        logProgress(ops);
 
-            return ops.x;
-        }
-        if (ops.xC.size > 0) {
-            ops.xC.item[ops.xC.size] = digit;
-            ops.xC.size = ops.xC.size + 1;
-            refreshOperand(ops);
-
-            gb_string_clear(display);
-            display = gb_string_append_fmt(display, "%f", ops.x);
-            logProgress(ops);
-
-            return ops.x;
-        }
+        return ops.x;
     }
     if (ops.state == +ST::SECOND_OPERAND) {
-        //first time
-        if (ops.yC.size == 0) {
-            ops.yC.item[ops.yC.size] = digit;
-            ops.yC.size = ops.yC.size + 1;
-            ops.y = digit;//(ops.x + (double)(digit * pow(10, ops.e)));
+        ops.yC.item[ops.yC.size] = digit;
+        ops.yC.size = ops.yC.size + 1;
+        ops.y = (ops.x + (double)(digit * pow(10, ops.e)));
 
-            gb_string_clear(display);
-            display = gb_string_append_fmt(display, "%f", ops.y);
-            logProgress(ops);
+        gb_string_clear(display);
+        display = gb_string_append_fmt(display, "%f", ops.y);
+        logProgress(ops);
 
-            return ops.y;
-        }
-        if (ops.yC.size > 0) {
-            ops.yC.item[ops.yC.size] = digit;
-            ops.yC.size = ops.yC.size + 1;
-            refreshOperand(ops);
-
-            gb_string_clear(display);
-            display = gb_string_append_fmt(display, "%f", ops.y);
-            logProgress(ops);
-
-            return ops.y;
-        }
+        return ops.y;
     }
         
     return NULL;
@@ -644,45 +618,45 @@ int dx12_main(){
             ImGui::InputTextWithHint("", display, display, gb_strlen(display));
 
             if (ImGui::Button("7",   bSize))
-                executeOperation(7, history[cursor], display);
+                assembleOperator(7, history[cursor], display);
             ImGui::SameLine();
 
             if (ImGui::Button("8",   bSize)) 
-                executeOperation(8, history[cursor], display);
+                assembleOperator(8, history[cursor], display);
             ImGui::SameLine();
 
             if (ImGui::Button("9",   bSize)) 
-                executeOperation(9, history[cursor], display);
+                assembleOperator(9, history[cursor], display);
             ImGui::SameLine();
 
             if (ImGui::Button("X",   bSize)) 
                 operateOrContinue(OP::MULTIPLICATION,history[cursor], display);
 
             if (ImGui::Button("4",   bSize)) 
-                executeOperation(4,history[cursor], display); 
+                assembleOperator(4,history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("5",   bSize)) 
-                executeOperation(5,history[cursor], display); 
+                assembleOperator(5,history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("6",   bSize)) 
-                executeOperation(6,history[cursor], display); 
+                assembleOperator(6,history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("-",   bSize)) 
                 operateOrContinue(OP::SUBTRACTION,history[cursor], display); 
             
             if (ImGui::Button("1",   bSize)) 
-                executeOperation(1,history[cursor], display); 
+                assembleOperator(1,history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("2",   bSize)) 
-                executeOperation(2,history[cursor], display); 
+                assembleOperator(2,history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("3",   bSize)) 
-                executeOperation(3,history[cursor], display); 
+                assembleOperator(3,history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("+",   bSize)) 
@@ -693,7 +667,7 @@ int dx12_main(){
             ImGui::SameLine();
             
             if (ImGui::Button("0",   bSize)) 
-                executeOperation(0, history[cursor], display); 
+                assembleOperator(0, history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button(",",   bSize)) 
@@ -1218,28 +1192,32 @@ void test_just_one_time() {
 
 
 
-        // executeOperation(3,history[cursor], display); 
+        // assembleOperator(3,history[cursor], display); 
         // operateOrContinue(OP::SUM, history[cursor], display);
-        // executeOperation(3,history[cursor], display);
+        // assembleOperator(3,history[cursor], display);
         // operateOrContinue(OP::EQUALS, history[cursor], display);
 
-        executeOperation(3,history[cursor], display); 
+        assembleOperator(3,history[cursor], display); 
         operateOrContinue(OP::SUM, history[cursor], display);
-        executeOperation(4,history[cursor], display);
+        assembleOperator(4,history[cursor], display);
         operateOrContinue(OP::SUM, history[cursor], display);
-        executeOperation(5,history[cursor], display);
+        assembleOperator(5,history[cursor], display);
+        assembleOperator(5,history[cursor], display);
+        assembleOperator(5,history[cursor], display);
+        operateOrContinue(OP::EQUALS, history[cursor], display);
 
-        // executeOperation(3,history[cursor], display); 
+
+        // assembleOperator(3,history[cursor], display); 
         // operateOrContinue(OP::MULTIPLICATION, history[cursor], display);
-        // executeOperation(3,history[cursor], display); 
+        // assembleOperator(3,history[cursor], display); 
 
-        // executeOperation(3,history[cursor], display); 
+        // assembleOperator(3,history[cursor], display); 
         // operateOrContinue(OP::DIVISION, history[cursor], display);
-        // executeOperation(3,history[cursor], display);
+        // assembleOperator(3,history[cursor], display);
 
-        // executeOperation(3,history[cursor], display); 
+        // assembleOperator(3,history[cursor], display); 
         // operateOrContinue(OP::SUBTRACTION, history[cursor], display);
-        // executeOperation(3,history[cursor], display); 
+        // assembleOperator(3,history[cursor], display); 
     }
 #endif
 
