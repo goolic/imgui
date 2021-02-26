@@ -229,44 +229,6 @@ char * arrayToString(arr * theArr) {
     return arrayS;
 }
 
-
-//se o usuario clicar em 1 botao temos de multiplicar o valor 
-//pela casa decimal em que estamos, adicionando o valor.
-//se clicar 7 operand recebe 7*1, se clicar em seguida
-//no 8 operand recebe 7*10 + 8*1 e se por fim clicar em 3,
-//recebera 7*100 + 8*10 + 3 * 1
-// queremos que primeiro os digitos sejam adicionados
-//em um array, e uma vez que a operação for selecionada
-// os digitos tem que ser popped do array e receberem
-// n zeros e somados ao operand
-void refreshOperand(struct operation& ops) {
-    accumulator = 0;
-    u16 powOrder = 0;
-    u16 cursor = 0;
-    if (ops.state == +ST::FIRST_OPERAND) {
-        cursor = ops.xC.size-1;
-        while(true) {
-            accumulator = (accumulator + (f64)(ops.xC.item[cursor] * pow(ops.base, powOrder)));
-
-            if (cursor == 0) break;
-            if (powOrder == ops.xC.size) break;
-
-            powOrder = powOrder + 1;
-            cursor = cursor - 1;
-        }
-        ops.x = accumulator;
-    }
-    if (ops.state == +ST::SECOND_OPERAND) {
-        for (cursor = ops.yC.size-1; cursor >= 0 && powOrder <= ops.yC.size; cursor = cursor - 1) {
-            accumulator = (accumulator + (f64)(ops.yC.item[cursor] * pow(ops.base, powOrder)));
-            powOrder = powOrder + 1;
-        }
-        ops.y = accumulator;
-    }
-    
-}
-
-
 // The objective of this function is to assemble an operator whenever there are multiple digits
 f64 assembleOperator (u8 digit, struct operation& ops, gbString& display) {
     //pra ficar correto é necessário armazenar os digitos 
@@ -275,13 +237,54 @@ f64 assembleOperator (u8 digit, struct operation& ops, gbString& display) {
 
     GB_ASSERT_MSG(ops.xC.size < ARR_MAX-1 || ops.yC.size < ARR_MAX-1, "Number of elements can't be higher than ARR_MAX");
 
+    //se o usuario clicar em 1 botao temos de multiplicar o valor 
+    //pela casa decimal em que estamos, adicionando o valor.
+    //se clicar 7 operand recebe 7*1, se clicar em seguida
+    //no 8 operand recebe 7*10 + 8*1 e se por fim clicar em 3,
+    //recebera 7*100 + 8*10 + 3 * 1
+    // queremos que primeiro os digitos sejam adicionados
+    //em um array, e uma vez que a operação for selecionada
+    // os digitos tem que ser popped do array e receberem
+    // n zeros e somados ao operand
+    {
+        u16 cursor = 0;
+        accumulator = 0;
+        u16 powOrder = 0;
+        u8 powStopCondition = 0;
+
+        if (ops.state == +ST::FIRST_OPERAND) {
+            cursor = ops.xC.size-1;
+            powStopCondition = ops.xC.size;
+        }
+        if (ops.state == +ST::SECOND_OPERAND) {
+            powStopCondition = ops.yC.size;
+            cursor = ops.yC.size-1;
+        }
+            
+        while(true) {
+            accumulator = (accumulator + (f64)(ops.xC.item[cursor] * pow(ops.base, powOrder)));
+
+            if (cursor == 0) break;
+            if (powOrder == powStopCondition) break;
+
+            powOrder = powOrder + 1;
+            cursor = cursor - 1;
+        }
+
+        if (ops.state == +ST::FIRST_OPERAND)
+            ops.x = accumulator;
+
+        if (ops.state == +ST::SECOND_OPERAND)
+            ops.y = accumulator;
+    }
+
     if (digit == 5)
         printf("stop here\n");
 
     if (ops.state == +ST::FIRST_OPERAND) {
         ops.xC.item[ops.xC.size] = digit;
         ops.xC.size = ops.xC.size + 1;
-        ops.x = (ops.x + (double)(digit * pow(10, ops.e)));
+        // ops.x = (ops.x + (double)(digit * pow(10, ops.e)));
 
         gb_string_clear(display);
         display = gb_string_append_fmt(display, "%f", ops.x);
@@ -292,7 +295,7 @@ f64 assembleOperator (u8 digit, struct operation& ops, gbString& display) {
     if (ops.state == +ST::SECOND_OPERAND) {
         ops.yC.item[ops.yC.size] = digit;
         ops.yC.size = ops.yC.size + 1;
-        ops.y = (ops.x + (double)(digit * pow(10, ops.e)));
+        // ops.y = (ops.x + (double)(digit * pow(10, ops.e)));
 
         gb_string_clear(display);
         display = gb_string_append_fmt(display, "%f", ops.y);
