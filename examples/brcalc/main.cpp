@@ -10,7 +10,7 @@
 
 // when result is achieved we need to ++ cursor and do a new operation
 
-// assembleOperator and operateOrContinue need to return "struct operation"????
+// addDigitToCurrentOperand and operateOrContinue need to return "struct operation"????
 
 // we need to query the window size and use it as an input to SetNextWindowSize
 
@@ -81,10 +81,11 @@ BETTER_ENUM (OPERATION, u8,
 
 BETTER_ENUM (STATE, u8,
     FIRST_OPERAND,
-    FIRST_OPER_FRACTION,
     SECOND_OPERAND,
-    SECOND_OPER_FRACTION,
-    RESULT_OBTAINED)
+    RESULT_OBTAINED,
+    RESULT_IN_PROGRESS,
+    READING_NEW_OPERAND,
+    JUST_STARTED_READING_NEW_OPERAND)
 #define ST STATE
 
 BETTER_ENUM (BASE, u8,
@@ -103,6 +104,7 @@ arr {
 
 struct operand {
     u64 listOfDigits[ARR_MAX-1] = { 0 };
+    u32 powOrder = 0;
     f64 value;
     u64 size = 0;
     u64 commaPosition;
@@ -113,7 +115,6 @@ struct historyNew {
     f64 resultBuffer = 0.0;
     BASE base= BASE::DECIMAL;
     OP op = OP::NONE;
-    bool readingNewOperand = true;
     struct operand* operands; //[ARR_MAX-1] = { 0 };
 };
 
@@ -126,6 +127,7 @@ struct operation {
     arr yC;
     OP op = OP::NONE;
     ST state = ST::FIRST_OPERAND;
+    u32 powOrder = 0;
 };
 
 //
@@ -254,13 +256,8 @@ char * arrayToString(arr * theArr) {
     return arrayS;
 }
 
-// The objective of this function is to assemble an operator whenever there are multiple digits
-f64 assembleOperator (u8 digit, struct operation& ops, gbString& display) {
-    //pra ficar correto é necessário armazenar os digitos 
-    //em um array e fazer pop deles na ordem reversa para 
-    //que a unidade de cada casa esteja no lugar certo
-
-    GB_ASSERT_MSG(ops.xC.size < ARR_MAX-1 || ops.yC.size < ARR_MAX-1, "Number of elements can't be higher than ARR_MAX");
+// Do pow and sum on all digits to get the correct value
+f64 assembleOperandFromListOfDigits (struct operation& ops) {
 
     //se o usuario clicar em 1 botao temos de multiplicar o valor 
     //pela casa decimal em que estamos, adicionando o valor.
@@ -271,37 +268,43 @@ f64 assembleOperator (u8 digit, struct operation& ops, gbString& display) {
     //em um array, e uma vez que a operação for selecionada
     // os digitos tem que ser popped do array e receberem
     // n zeros e somados ao operand
-    {
         u16 cursor = 0;
         accumulator = 0;
-        u16 powOrder = 0;
         u8 powStopCondition = 0;
+        u8 digitToPow = 0;
 
         if (ops.state == +ST::FIRST_OPERAND) {
             cursor = ops.xC.size-1;
+            digitToPow = ops.xC.item[cursor];
             powStopCondition = ops.xC.size;
         }
         if (ops.state == +ST::SECOND_OPERAND) {
-            powStopCondition = ops.yC.size;
             cursor = ops.yC.size-1;
+            digitToPow = ops.yC.item[cursor];
+            powStopCondition = ops.yC.size;
         }
             
         while(true) {
-            accumulator = (accumulator + (f64)(ops.xC.item[cursor] * pow(ops.base, powOrder)));
+            printf("digitToPow: %d\n", digitToPow);
+            accumulator = (accumulator + (f64)(digitToPow * pow(ops.base, ops.powOrder)));
 
             if (cursor == 0) break;
-            if (powOrder == powStopCondition) break;
+            if (ops.powOrder == powStopCondition) break;
 
-            powOrder = powOrder + 1;
+            ops.powOrder = ops.powOrder + 1;
             cursor = cursor - 1;
         }
-
-        if (ops.state == +ST::FIRST_OPERAND)
-            ops.x = accumulator;
-
-        if (ops.state == +ST::SECOND_OPERAND)
-            ops.y = accumulator;
+    return accumulator;
     }
+
+// The objective of this function is to assemble an operator whenever there are multiple digits
+f64 addDigitToCurrentOperand (u8 digit, struct operation& ops, gbString& display) {
+    //pra ficar correto é necessário armazenar os digitos 
+    //em um array e fazer pop deles na ordem reversa para 
+    //que a unidade de cada casa esteja no lugar certo
+
+    GB_ASSERT_MSG(ops.xC.size < ARR_MAX-1 || ops.yC.size < ARR_MAX-1, "Number of elements can't be higher than ARR_MAX");
+
 
     if (digit == 5)
         printf("stop here\n");
@@ -309,7 +312,7 @@ f64 assembleOperator (u8 digit, struct operation& ops, gbString& display) {
     if (ops.state == +ST::FIRST_OPERAND) {
         ops.xC.item[ops.xC.size] = digit;
         ops.xC.size = ops.xC.size + 1;
-        // ops.x = (ops.x + (double)(digit * pow(10, ops.e)));
+        ops.x =  assembleOperandFromListOfDigits(ops);//(ops.x + (double)(digit * pow(10, ops.e)));
 
         gb_string_clear(display);
         display = gb_string_append_fmt(display, "%f", ops.x);
@@ -320,7 +323,7 @@ f64 assembleOperator (u8 digit, struct operation& ops, gbString& display) {
     if (ops.state == +ST::SECOND_OPERAND) {
         ops.yC.item[ops.yC.size] = digit;
         ops.yC.size = ops.yC.size + 1;
-        // ops.y = (ops.x + (double)(digit * pow(10, ops.e)));
+        ops.y = assembleOperandFromListOfDigits(ops);//(ops.x + (double)(digit * pow(10, ops.e)));
 
         gb_string_clear(display);
         display = gb_string_append_fmt(display, "%f", ops.y);
@@ -328,6 +331,7 @@ f64 assembleOperator (u8 digit, struct operation& ops, gbString& display) {
 
         return ops.y;
     }
+
         
     return NULL;
 }
@@ -358,41 +362,50 @@ void operateOrContinue(OP op, struct operation& ops, gbString& display) {
         if (op == +OP::SUM || ops.op == +OP::SUM)
         {
             ops.result = ops.x + ops.y;
+            ops.powOrder = 0; 
+            ops.state = ST::RESULT_OBTAINED;
+
             gb_string_clear(display);
             display = gb_string_append_fmt(display, "%f", ops.result);
-            ops.state = ST::RESULT_OBTAINED;
             logProgress(ops);
         }
         if (op == +OP::SUBTRACTION || ops.op == +OP::SUBTRACTION)
         {
             ops.result = ops.x - ops.y;
+            ops.powOrder = 0;
+            ops.state = ST::RESULT_OBTAINED;
+
             gb_string_clear(display);
             display = gb_string_append_fmt(display, "%f", ops.result);
-            ops.state = ST::RESULT_OBTAINED;
             logProgress(ops);
         }
         if (op == +OP::MULTIPLICATION || ops.op == +OP::MULTIPLICATION)
         {
             ops.result = ops.x * ops.y;
+            ops.powOrder = 0; 
+            ops.state = ST::RESULT_OBTAINED;
+
             gb_string_clear(display);
             display = gb_string_append_fmt(display, "%f", ops.result);
-            ops.state = ST::RESULT_OBTAINED;
             logProgress(ops);
         }
         if (op == +OP::DIVISION || ops.op == +OP::DIVISION)
         {
             ops.result = (double) ops.x/ops.y;
+            ops.powOrder = 0; 
+            ops.state = ST::RESULT_OBTAINED;
+
             gb_string_clear(display);
             display = gb_string_append_fmt(display, "%f", ops.result);
-            ops.state = ST::RESULT_OBTAINED;
-            // ops.result += (double) ops.x%ops.y;
             logProgress(ops);
         }
         if (op == +OP::EQUALS || ops.state != +ST::RESULT_OBTAINED)
         {
+            ops.powOrder = 0; 
+            ops.state = ST::RESULT_OBTAINED;
+
             display = gb_string_append_fmt(display, "%f", ops.result);
             // ops.result += (double) ops.x%ops.y;
-            ops.state = ST::RESULT_OBTAINED;
             logProgress(ops);
         }
     }
@@ -421,8 +434,13 @@ int main(int, char**) {
     // setup();
     // loop();
 
+#ifdef TEST_BRCALC
+    test_just_one_time();
+#endif
 
+#ifndef TEST_BRCALC
     dx12_main();
+#endif
 
     return 0;
 }
@@ -516,12 +534,7 @@ int dx12_main(){
     struct operation history [1024];// = new();
     static __int16 cursor = 0;
 
-
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
-#ifdef TEST_BRCALC
-    test_just_one_time();
-#endif
 
     // Main loop
     MSG msg;
@@ -646,45 +659,45 @@ int dx12_main(){
             ImGui::InputTextWithHint("", display, display, gb_strlen(display));
 
             if (ImGui::Button("7",   bSize))
-                assembleOperator(7, history[cursor], display);
+                addDigitToCurrentOperand(7, history[cursor], display);
             ImGui::SameLine();
 
             if (ImGui::Button("8",   bSize)) 
-                assembleOperator(8, history[cursor], display);
+                addDigitToCurrentOperand(8, history[cursor], display);
             ImGui::SameLine();
 
             if (ImGui::Button("9",   bSize)) 
-                assembleOperator(9, history[cursor], display);
+                addDigitToCurrentOperand(9, history[cursor], display);
             ImGui::SameLine();
 
             if (ImGui::Button("X",   bSize)) 
                 operateOrContinue(OP::MULTIPLICATION,history[cursor], display);
 
             if (ImGui::Button("4",   bSize)) 
-                assembleOperator(4,history[cursor], display); 
+                addDigitToCurrentOperand(4,history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("5",   bSize)) 
-                assembleOperator(5,history[cursor], display); 
+                addDigitToCurrentOperand(5,history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("6",   bSize)) 
-                assembleOperator(6,history[cursor], display); 
+                addDigitToCurrentOperand(6,history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("-",   bSize)) 
                 operateOrContinue(OP::SUBTRACTION,history[cursor], display); 
             
             if (ImGui::Button("1",   bSize)) 
-                assembleOperator(1,history[cursor], display); 
+                addDigitToCurrentOperand(1,history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("2",   bSize)) 
-                assembleOperator(2,history[cursor], display); 
+                addDigitToCurrentOperand(2,history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("3",   bSize)) 
-                assembleOperator(3,history[cursor], display); 
+                addDigitToCurrentOperand(3,history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button("+",   bSize)) 
@@ -695,7 +708,7 @@ int dx12_main(){
             ImGui::SameLine();
             
             if (ImGui::Button("0",   bSize)) 
-                assembleOperator(0, history[cursor], display); 
+                addDigitToCurrentOperand(0, history[cursor], display); 
             ImGui::SameLine();
             
             if (ImGui::Button(",",   bSize)) 
@@ -1220,32 +1233,32 @@ void test_just_one_time() {
 
 
 
-        // assembleOperator(3,history[cursor], display); 
+        // addDigitToCurrentOperand(3,history[cursor], display); 
         // operateOrContinue(OP::SUM, history[cursor], display);
-        // assembleOperator(3,history[cursor], display);
+        // addDigitToCurrentOperand(3,history[cursor], display);
         // operateOrContinue(OP::EQUALS, history[cursor], display);
 
-        assembleOperator(3,history[cursor], display); 
+        addDigitToCurrentOperand(3,history[cursor], display); 
         operateOrContinue(OP::SUM, history[cursor], display);
-        assembleOperator(4,history[cursor], display);
+        addDigitToCurrentOperand(4,history[cursor], display);
         operateOrContinue(OP::SUM, history[cursor], display);
-        assembleOperator(5,history[cursor], display);
-        assembleOperator(5,history[cursor], display);
-        assembleOperator(5,history[cursor], display);
+        addDigitToCurrentOperand(5,history[cursor], display);
+        addDigitToCurrentOperand(5,history[cursor], display);
+        addDigitToCurrentOperand(5,history[cursor], display);
         operateOrContinue(OP::EQUALS, history[cursor], display);
 
 
-        // assembleOperator(3,history[cursor], display); 
+        // addDigitToCurrentOperand(3,history[cursor], display); 
         // operateOrContinue(OP::MULTIPLICATION, history[cursor], display);
-        // assembleOperator(3,history[cursor], display); 
+        // addDigitToCurrentOperand(3,history[cursor], display); 
 
-        // assembleOperator(3,history[cursor], display); 
+        // addDigitToCurrentOperand(3,history[cursor], display); 
         // operateOrContinue(OP::DIVISION, history[cursor], display);
-        // assembleOperator(3,history[cursor], display);
+        // addDigitToCurrentOperand(3,history[cursor], display);
 
-        // assembleOperator(3,history[cursor], display); 
+        // addDigitToCurrentOperand(3,history[cursor], display); 
         // operateOrContinue(OP::SUBTRACTION, history[cursor], display);
-        // assembleOperator(3,history[cursor], display); 
+        // addDigitToCurrentOperand(3,history[cursor], display); 
     }
 #endif
 
