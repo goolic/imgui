@@ -1,6 +1,8 @@
 #include "pch.h"
 // TODO:
 
+// operands deve ser
+
 //Vamos fazer essa porra fazer calculos básicos e passar testes. 
 //Chegando nesse ponto a gente se preocupa em deixar mais bonito e sofisticado.
 
@@ -123,6 +125,22 @@ arr {
     u8 size = 0;
     u8 commaPosition;
     bool hasComma;
+};
+
+struct operands {
+    u64 listOfDigits[ARR_MAX-1] = { 0 };
+    f64 value;
+    u64 size = 0;
+    u64 commaPosition;
+    bool hasComma;
+};
+
+struct history {
+    f64 resultBuffer = 0.0;
+    BASE base= BASE::DECIMAL;
+    OP op = OP::NONE;
+    bool readingNewOperand = true;
+    struct operands* history[ARR_MAX-1] = { 0 };
 };
 
 struct operation {
