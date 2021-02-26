@@ -291,7 +291,7 @@ f64 assembleOperandFromListOfDigits (struct operation& ops) {
             if (cursor == 0) break;
             if (ops.powOrder == powStopCondition) break;
 
-            ops.powOrder = ops.powOrder + 1;
+           ops.powOrder = ops.powOrder + 1;
             cursor = cursor - 1;
         }
     return accumulator;
@@ -311,6 +311,7 @@ f64 addDigitToCurrentOperand (u8 digit, struct operation& ops, gbString& display
 
     if (ops.state == +ST::FIRST_OPERAND) {
         ops.xC.item[ops.xC.size] = digit;
+        // printf ("ops.xC.item[ops.xC.size]: %d/n", ops.xC.item[ops.xC.size]);
         ops.xC.size = ops.xC.size + 1;
         ops.x =  assembleOperandFromListOfDigits(ops);//(ops.x + (double)(digit * pow(10, ops.e)));
 
