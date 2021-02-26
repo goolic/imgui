@@ -54,6 +54,8 @@
 // #pragma comment(lib, "dxguid.lib")
 // #endif
 
+//
+// UI Data structs
 struct FrameContext
 {
     ID3D12CommandAllocator* CommandAllocator;
@@ -61,36 +63,9 @@ struct FrameContext
 };
 
 //
-// Data for the DX backend
-static int const                    NUM_FRAMES_IN_FLIGHT = 3;
-static FrameContext                 g_frameContext[NUM_FRAMES_IN_FLIGHT] = {};
-static UINT                         g_frameIndex = 0;
-
-static int const                    NUM_BACK_BUFFERS = 3;
-static ID3D12Device*                g_pd3dDevice = NULL;
-static ID3D12DescriptorHeap*        g_pd3dRtvDescHeap = NULL;
-static ID3D12DescriptorHeap*        g_pd3dSrvDescHeap = NULL;
-static ID3D12CommandQueue*          g_pd3dCommandQueue = NULL;
-static ID3D12GraphicsCommandList*   g_pd3dCommandList = NULL;
-static ID3D12Fence*                 g_fence = NULL;
-static HANDLE                       g_fenceEvent = NULL;
-static UINT64                       g_fenceLastSignaledValue = 0;
-static IDXGISwapChain3*             g_pSwapChain = NULL;
-static HANDLE                       g_hSwapChainWaitableObject = NULL;
-static ID3D12Resource*              g_mainRenderTargetResource[NUM_BACK_BUFFERS] = {};
-static D3D12_CPU_DESCRIPTOR_HANDLE  g_mainRenderTargetDescriptor[NUM_BACK_BUFFERS] = {};
-
-//
-// BRCalc data
+//BRCalc Data structs
 #define BUFFER_MAX 1024
-#define ARR_MAX 3
-static  gbAllocator all = gb_heap_allocator();
-static char   buf[U8_MAX-1] =  "";
-static f64 accumulator = 0;
-static char arrayS[U8_MAX-1] = "";
-static gbString print_buf = gb_string_make_length(all, "", BUFFER_MAX);
-
-static int ret;
+#define ARR_MAX 32
 
 BETTER_ENUM (OPERATION, u8,
     NONE,
@@ -103,7 +78,6 @@ BETTER_ENUM (OPERATION, u8,
     COMMA_FOUND,
     COMMA_SET)
 #define OP OPERATION
-
 
 BETTER_ENUM (STATE, u8,
     FIRST_OPERAND,
@@ -127,7 +101,7 @@ arr {
     bool hasComma;
 };
 
-struct operands {
+struct operand {
     u64 listOfDigits[ARR_MAX-1] = { 0 };
     f64 value;
     u64 size = 0;
@@ -135,12 +109,12 @@ struct operands {
     bool hasComma;
 };
 
-struct history {
+struct historyNew {
     f64 resultBuffer = 0.0;
     BASE base= BASE::DECIMAL;
     OP op = OP::NONE;
     bool readingNewOperand = true;
-    struct operands* history[ARR_MAX-1] = { 0 };
+    struct operand* operands; //[ARR_MAX-1] = { 0 };
 };
 
 struct operation {
@@ -155,10 +129,43 @@ struct operation {
 };
 
 //
-//BENCHMARK
+//BENCHMARK DATA
 static __int64                g_Time;
 static __int64                g_TicksPerSecond;
 static __int64                g_TimeAtStartup;
+
+//
+// Data for the DX backend
+static int const                    NUM_FRAMES_IN_FLIGHT = 3;
+static FrameContext                 g_frameContext[NUM_FRAMES_IN_FLIGHT] = {};
+static UINT                         g_frameIndex = 0;
+
+static int const                    NUM_BACK_BUFFERS = 3;
+static ID3D12Device*                g_pd3dDevice = NULL;
+static ID3D12DescriptorHeap*        g_pd3dRtvDescHeap = NULL;
+static ID3D12DescriptorHeap*        g_pd3dSrvDescHeap = NULL;
+static ID3D12CommandQueue*          g_pd3dCommandQueue = NULL;
+static ID3D12GraphicsCommandList*   g_pd3dCommandList = NULL;
+static ID3D12Fence*                 g_fence = NULL;
+static HANDLE                       g_fenceEvent = NULL;
+static UINT64                       g_fenceLastSignaledValue = 0;
+static IDXGISwapChain3*             g_pSwapChain = NULL;
+static HANDLE                       g_hSwapChainWaitableObject = NULL;
+static ID3D12Resource*              g_mainRenderTargetResource[NUM_BACK_BUFFERS] = {};
+static D3D12_CPU_DESCRIPTOR_HANDLE  g_mainRenderTargetDescriptor[NUM_BACK_BUFFERS] = {};
+
+//
+// BRCalc data
+static  gbAllocator all = gb_heap_allocator();
+static char   buf[U8_MAX-1] =  "";
+static f64 accumulator = 0;
+static char arrayS[U8_MAX-1] = "";
+static gbString print_buf = gb_string_make_length(all, "", BUFFER_MAX);
+static struct historyNew* history_of_operands = (struct historyNew*) gb_alloc((all), ((ARR_MAX-1)*gb_size_of(struct historyNew)));
+
+static int ret;
+
+
 #ifndef STARTUP_BENCHMARK 
     #define STARTUP_BENCHMARK
     
