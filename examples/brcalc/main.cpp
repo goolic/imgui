@@ -75,13 +75,11 @@ BETTER_ENUM (OPERATION, u8,
     SUBTRACTION,
     EQUALS,
     SOMETHING,
-    COMMA_FOUND,
-    COMMA_SET)
+    COMMA_FOUND)
 #define OP OPERATION
 
 BETTER_ENUM (STATE, u8,
     FIRST_OPERAND,
-    SECOND_OPERAND,
     RESULT_OBTAINED,
     RESULT_IN_PROGRESS,
     READING_NEW_OPERAND,
@@ -102,33 +100,39 @@ arr {
     bool hasComma;
 };
 
-struct operand {
+struct operand_struct {
     u64 listOfDigits[ARR_MAX-1] = { 0 };
     u32 powOrder = 0;
     f64 value;
     u64 size = 0;
     u64 commaPosition;
-    bool hasComma;
+    bool commaSet;
 };
+
+typedef operand_struct operand_t;
+
+// typedef (operand_t**) operandListPointer;
 
 struct historyNew {
     f64 resultBuffer = 0.0;
     BASE base= BASE::DECIMAL;
     OP op = OP::NONE;
-    struct operand* operands; //[ARR_MAX-1] = { 0 };
+    operand_t (*operands)[]; //[ARR_MAX-1] = { 0 };
 };
 
-struct operation {
+struct operation_struct {
     f64 x = 0;
-    f64 y = 0;
     f64 result = 0;
     BASE base= BASE::DECIMAL;
-    arr xC;
-    arr yC;
+    operand_t *listOfOperands; //needs malloc
+    u64 numberOfOperandsToOperate = 0;
     OP op = OP::NONE;
     ST state = ST::FIRST_OPERAND;
     u32 powOrder = 0;
+    u64 size = 0;
 };
+
+typedef operation_struct operation_t;
 
 //
 //BENCHMARK DATA
@@ -183,18 +187,18 @@ static int ret;
 #ifndef TEST_BRCALC 
     #define TEST_BRCALC
 
-    void test_just_one_time();
+    void test_just_one_time(operation_t& ops);
 #endif
 
     
 
 // Forward declarations of helper functions
 int softraster_main(int, char**);
-char* arrayToString(arr * theArr);
+char* arrayToString(operand_t & theArr);
 char const* decimalSeparator = (char const*)',';
 void setup();
 void loop();
-int dx12_main();
+int dx12_main(operation_t& ops);
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
@@ -233,31 +237,35 @@ void logProgress(const char* log){
     fwrite(print_buf, sizeof(char), ret, stdout);
 }
 
-void logProgress(struct operation& ops){
+void logProgress(operation_t ops){
     ret = 0;
-    auto xCstr = arrayToString(&ops.xC);
-    auto yCstr = arrayToString(&ops.yC);
-    // ret = stbsp_sprintf(print_buf, "x:\ty:\txC:\txC.size\ty:\txY.size\n");
-    // fwrite(print_buf, sizeof(char), ret, stdout)
-    // ret = stbsp_sprintf(print_buf, "%.3f\t%.3f\t%s\t%d\t%s\t%d", ops.x, ops.y, xCstr, ops.xC.size, yCstr, ops.yC.size);
-    ret = stbsp_sprintf(print_buf, "\n*NOVO*\nx:  %.3f\ny:  %.3f\nop:  %s\nresult  %.3f\nxC: %s\nxC.size %d\nxy: %s\nxY.size %d\n",
-                                            ops.x, ops.y,ops.op._to_string(), ops.result,    xCstr, ops.xC.size,  yCstr, ops.yC.size);
+    auto listOfOperandsStr = arrayToString(ops.listOfOperands[ops.size]);
+
+    ret = stbsp_sprintf(print_buf, "\n*NOVO*\nx:  %.3f\noperation:  %s\nresult:  %.3f\nlistOfOperands: %s\nlistOfOperands.size %d\n",
+                                             ops.x,ops.op._to_string(),ops.result,    listOfOperandsStr, ops.listOfOperands[ops.size].size);
     fwrite(print_buf, sizeof(char), ret, stdout);
 }
 
 //@speed we unrool this loop, since we garantee that theArr is 0 initialized
-char * arrayToString(arr * theArr) {
+char * arrayToString(operand_t & theArr) {
     static u16 i = 0;
-    int ch = 0;
-    for (i = 0; i != theArr->size; i = i + 1) {
-        ch = theArr->item[i] + 48;
+    u64 ch = 0;
+    for (i = 0; i != theArr.size; i = i + 1) {
+        ch = theArr.listOfDigits[i] + 48;
         arrayS[i] = (char)ch;
     }
     return arrayS;
 }
 
+f64 runCalculation (OP op, operation_t& ops)
+{
+    op = +OP::SUM;
+    ops.size = 0;
+    return 0;
+}
+
 // Do pow and sum on all digits to get the correct value
-f64 assembleOperandFromListOfDigits (struct operation& ops) {
+f64 assembleOperandFromListOfDigits (operation_t& ops) {
 
     //se o usuario clicar em 1 botao temos de multiplicar o valor 
     //pela casa decimal em que estamos, adicionando o valor.
@@ -268,24 +276,19 @@ f64 assembleOperandFromListOfDigits (struct operation& ops) {
     //em um array, e uma vez que a operação for selecionada
     // os digitos tem que ser popped do array e receberem
     // n zeros e somados ao operand
-        u16 cursor = 0;
+        u64 cursor = 0;
         accumulator = 0;
-        u8 powStopCondition = 0;
-        u8 digitToPow = 0;
+        u64 powStopCondition = 0;
+        u64 digitToPow = 0;
 
         if (ops.state == +ST::FIRST_OPERAND) {
-            cursor = ops.xC.size-1;
-            digitToPow = ops.xC.item[cursor];
-            powStopCondition = ops.xC.size;
-        }
-        if (ops.state == +ST::SECOND_OPERAND) {
-            cursor = ops.yC.size-1;
-            digitToPow = ops.yC.item[cursor];
-            powStopCondition = ops.yC.size;
+            cursor = ops.listOfOperands[ops.size].size-1;
+            digitToPow = ops.listOfOperands[ops.size].listOfDigits[cursor];
+            powStopCondition = ops.listOfOperands[ops.size].size;
         }
             
         while(true) {
-            printf("digitToPow: %d\n", digitToPow);
+            printf("digitToPow: %I64d\n", digitToPow);
             accumulator = (accumulator + (f64)(digitToPow * pow(ops.base, ops.powOrder)));
 
             if (cursor == 0) break;
@@ -298,21 +301,23 @@ f64 assembleOperandFromListOfDigits (struct operation& ops) {
     }
 
 // The objective of this function is to assemble an operator whenever there are multiple digits
-f64 addDigitToCurrentOperand (u8 digit, struct operation& ops, gbString& display) {
+f64 addDigitToCurrentOperand (u8 digit, operation_t& ops, gbString& display) {
     //pra ficar correto é necessário armazenar os digitos 
     //em um array e fazer pop deles na ordem reversa para 
     //que a unidade de cada casa esteja no lugar certo
 
-    GB_ASSERT_MSG(ops.xC.size < ARR_MAX-1 || ops.yC.size < ARR_MAX-1, "Number of elements can't be higher than ARR_MAX");
+    GB_ASSERT_MSG(ops.listOfOperands[ops.size].size < ARR_MAX-1, "Number of elements can't be higher than ARR_MAX");
 
 
     if (digit == 5)
         printf("stop here\n");
 
+    auto current_Operand = ops.listOfOperands[ops.size].listOfDigits[ops.listOfOperands[ops.size].size];
+
     if (ops.state == +ST::FIRST_OPERAND) {
-        ops.xC.item[ops.xC.size] = digit;
-        // printf ("ops.xC.item[ops.xC.size]: %d/n", ops.xC.item[ops.xC.size]);
-        ops.xC.size = ops.xC.size + 1;
+        current_Operand = digit;
+        printf ("current_Operand: %I64d/n", current_Operand);
+        ops.listOfOperands[ops.size].size = ops.listOfOperands[ops.size].size + 1;
         ops.x =  assembleOperandFromListOfDigits(ops);//(ops.x + (double)(digit * pow(10, ops.e)));
 
         gb_string_clear(display);
@@ -321,50 +326,30 @@ f64 addDigitToCurrentOperand (u8 digit, struct operation& ops, gbString& display
 
         return ops.x;
     }
-    if (ops.state == +ST::SECOND_OPERAND) {
-        ops.yC.item[ops.yC.size] = digit;
-        ops.yC.size = ops.yC.size + 1;
-        ops.y = assembleOperandFromListOfDigits(ops);//(ops.x + (double)(digit * pow(10, ops.e)));
-
-        gb_string_clear(display);
-        display = gb_string_append_fmt(display, "%f", ops.y);
-        logProgress(ops);
-
-        return ops.y;
-    }
-
         
     return NULL;
 }
 
 //if its a comma we save the current position else we do the operation or go to the second operand
-void operateOrContinue(OP op, struct operation& ops, gbString& display) {
+void operateOrContinue(OP op, operation_t& ops, gbString& display) {
 
     if (op == +OP::COMMA_FOUND) {//continue ops.state, set ops.xyC.commaPosition to ops.xyC.size
         //@robustness we need to see if the commaposition is not off by one
-        if (ops.state == +ST::FIRST_OPERAND) {
-                ops.xC.commaPosition = ops.xC.size;
+                ops.listOfOperands[ops.size].commaPosition = ops.listOfOperands[ops.size].size;
                 display = gb_string_append_length(display, decimalSeparator, 1);
-                op = +OP::COMMA_SET;
+                ops.listOfOperands[ops.size].commaSet = true;
                 logProgress(ops);
-            }
-        if (ops.state == +ST::SECOND_OPERAND) {
-            ops.yC.commaPosition = ops.yC.size;
-            display = gb_string_append_length(display, decimalSeparator, 1);
-            op = +OP::COMMA_SET;
-            logProgress(ops);
-            }
-        
     }
     
-    if ((ops.state == +ST::SECOND_OPERAND) && (op != +OP::COMMA_FOUND)) {
+    if ((ops.state == +ST::RESULT_IN_PROGRESS || ops.state == +ST::READING_NEW_OPERAND || ops.state == +ST::JUST_STARTED_READING_NEW_OPERAND) && (op != +OP::COMMA_FOUND)) {
         assert(ops.op != +OP::NONE);
 
         if (op == +OP::SUM || ops.op == +OP::SUM)
         {
-            ops.result = ops.x + ops.y;
+            ops.result = runCalculation(op, ops);
             ops.powOrder = 0; 
-            ops.state = ST::RESULT_OBTAINED;
+            ops.state = ST::RESULT_IN_PROGRESS;
+            ops.numberOfOperandsToOperate = ops.numberOfOperandsToOperate+1;
 
             gb_string_clear(display);
             display = gb_string_append_fmt(display, "%f", ops.result);
@@ -372,9 +357,10 @@ void operateOrContinue(OP op, struct operation& ops, gbString& display) {
         }
         if (op == +OP::SUBTRACTION || ops.op == +OP::SUBTRACTION)
         {
-            ops.result = ops.x - ops.y;
+            ops.result = runCalculation(op, ops);
             ops.powOrder = 0;
-            ops.state = ST::RESULT_OBTAINED;
+            ops.state = ST::RESULT_IN_PROGRESS;
+            ops.numberOfOperandsToOperate = ops.numberOfOperandsToOperate+1;
 
             gb_string_clear(display);
             display = gb_string_append_fmt(display, "%f", ops.result);
@@ -382,9 +368,10 @@ void operateOrContinue(OP op, struct operation& ops, gbString& display) {
         }
         if (op == +OP::MULTIPLICATION || ops.op == +OP::MULTIPLICATION)
         {
-            ops.result = ops.x * ops.y;
+            ops.result = runCalculation(op, ops);
             ops.powOrder = 0; 
-            ops.state = ST::RESULT_OBTAINED;
+            ops.state = ST::RESULT_IN_PROGRESS;
+            ops.numberOfOperandsToOperate = ops.numberOfOperandsToOperate+1;
 
             gb_string_clear(display);
             display = gb_string_append_fmt(display, "%f", ops.result);
@@ -392,9 +379,10 @@ void operateOrContinue(OP op, struct operation& ops, gbString& display) {
         }
         if (op == +OP::DIVISION || ops.op == +OP::DIVISION)
         {
-            ops.result = (double) ops.x/ops.y;
+            ops.result = runCalculation(op, ops);
             ops.powOrder = 0; 
-            ops.state = ST::RESULT_OBTAINED;
+            ops.state = ST::RESULT_IN_PROGRESS;
+            ops.numberOfOperandsToOperate = ops.numberOfOperandsToOperate+1;
 
             gb_string_clear(display);
             display = gb_string_append_fmt(display, "%f", ops.result);
@@ -404,6 +392,7 @@ void operateOrContinue(OP op, struct operation& ops, gbString& display) {
         {
             ops.powOrder = 0; 
             ops.state = ST::RESULT_OBTAINED;
+            ops.numberOfOperandsToOperate = 0;
 
             display = gb_string_append_fmt(display, "%f", ops.result);
             // ops.result += (double) ops.x%ops.y;
@@ -411,13 +400,6 @@ void operateOrContinue(OP op, struct operation& ops, gbString& display) {
         }
     }
 
-    if ((ops.state == +ST::FIRST_OPERAND) && (op != +OP::COMMA_FOUND)) {
-        ops.state = +ST::SECOND_OPERAND;
-        ops.op = op;
-        logProgress("cá ixtou!\n");
-        gb_string_clear(display);
-        addToDisplay(0, display);
-    }
 
     
 }
@@ -429,6 +411,11 @@ int main(int, char**) {
                 return false;
     #endif
 
+
+    // static struct history_of_operands = (struct historyNew*) gb_alloc((all), ((ARR_MAX-1)*gb_size_of(struct historyNew)));
+    operation_t* ops = (operation_t*) gb_alloc((all), ((ARR_MAX-1)*gb_size_of(operation_t)));
+    ops->listOfOperands = (operand_t*) gb_alloc((all), ((ARR_MAX-1)*gb_size_of(operand_t)));
+
     //isso foi meu chute de como fazer funcionar a versão android !
     //o codigo original fica no .ino o arduino chama automagicamente setup e loop
     //softraster_main(1,(char**)"args");
@@ -436,17 +423,17 @@ int main(int, char**) {
     // loop();
 
 #ifdef TEST_BRCALC
-    test_just_one_time();
+    test_just_one_time(*ops);
 #endif
 
 #ifndef TEST_BRCALC
-    dx12_main();
+    dx12_main(ops);
 #endif
 
     return 0;
 }
 
-int dx12_main(){
+int dx12_main(operation_t& ops){
     // Create application window
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T( "BRCalc" ), NULL };
     ::RegisterClassEx(&wc);
@@ -532,7 +519,6 @@ int dx12_main(){
     addToDisplay(0,display);
 
     static double result   = 0;
-    struct operation history [1024];// = new();
     static __int16 cursor = 0;
 
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
@@ -660,79 +646,79 @@ int dx12_main(){
             ImGui::InputTextWithHint("", display, display, gb_strlen(display));
 
             if (ImGui::Button("7",   bSize))
-                addDigitToCurrentOperand(7, history[cursor], display);
+                addDigitToCurrentOperand(7, ops, display);
             ImGui::SameLine();
 
             if (ImGui::Button("8",   bSize)) 
-                addDigitToCurrentOperand(8, history[cursor], display);
+                addDigitToCurrentOperand(8, ops, display);
             ImGui::SameLine();
 
             if (ImGui::Button("9",   bSize)) 
-                addDigitToCurrentOperand(9, history[cursor], display);
+                addDigitToCurrentOperand(9, ops, display);
             ImGui::SameLine();
 
             if (ImGui::Button("X",   bSize)) 
-                operateOrContinue(OP::MULTIPLICATION,history[cursor], display);
+                operateOrContinue(OP::MULTIPLICATION,ops, display);
 
             if (ImGui::Button("4",   bSize)) 
-                addDigitToCurrentOperand(4,history[cursor], display); 
+                addDigitToCurrentOperand(4,ops, display); 
             ImGui::SameLine();
             
             if (ImGui::Button("5",   bSize)) 
-                addDigitToCurrentOperand(5,history[cursor], display); 
+                addDigitToCurrentOperand(5,ops, display); 
             ImGui::SameLine();
             
             if (ImGui::Button("6",   bSize)) 
-                addDigitToCurrentOperand(6,history[cursor], display); 
+                addDigitToCurrentOperand(6,ops, display); 
             ImGui::SameLine();
             
             if (ImGui::Button("-",   bSize)) 
-                operateOrContinue(OP::SUBTRACTION,history[cursor], display); 
+                operateOrContinue(OP::SUBTRACTION,ops, display); 
             
             if (ImGui::Button("1",   bSize)) 
-                addDigitToCurrentOperand(1,history[cursor], display); 
+                addDigitToCurrentOperand(1,ops, display); 
             ImGui::SameLine();
             
             if (ImGui::Button("2",   bSize)) 
-                addDigitToCurrentOperand(2,history[cursor], display); 
+                addDigitToCurrentOperand(2,ops, display); 
             ImGui::SameLine();
             
             if (ImGui::Button("3",   bSize)) 
-                addDigitToCurrentOperand(3,history[cursor], display); 
+                addDigitToCurrentOperand(3,ops, display); 
             ImGui::SameLine();
             
             if (ImGui::Button("+",   bSize)) 
-                operateOrContinue(OP::SUM, history[cursor], display);
+                operateOrContinue(OP::SUM, ops, display);
             
             if (ImGui::Button("+/-", bSize)) 
-                operateOrContinue(OP::SOMETHING, history[cursor], display); 
+                operateOrContinue(OP::SOMETHING, ops, display); 
             ImGui::SameLine();
             
             if (ImGui::Button("0",   bSize)) 
-                addDigitToCurrentOperand(0, history[cursor], display); 
+                addDigitToCurrentOperand(0, ops, display); 
             ImGui::SameLine();
             
             if (ImGui::Button(",",   bSize)) 
-                operateOrContinue(OP::COMMA_FOUND, history[cursor], display); 
+                operateOrContinue(OP::COMMA_FOUND, ops, display); 
             ImGui::SameLine();
             
             if (ImGui::Button("=",   bSize)) 
-                operateOrContinue(OP::EQUALS, history[cursor], display);
+                operateOrContinue(OP::EQUALS, ops, display);
 
             if (ImGui::Button("Binary",   bSize))
-                history[cursor].base = +BASE::BINARY;
+                ops.base = +BASE::BINARY;
             ImGui::SameLine();
 
             if (ImGui::Button("Octal",   bSize))
-                history[cursor].base = +BASE::OCTAL;
+                ops.base = +BASE::OCTAL;
             ImGui::SameLine();
 
             if (ImGui::Button("Decimal",   bSize))
-                history[cursor].base = +BASE::DECIMAL;
+                ops.base = +BASE::DECIMAL;
             ImGui::SameLine();
 
             if (ImGui::Button("Hexadecimal",   bSize))
-                history[cursor].base = +BASE::HEXADECIMAL;
+                ops.base = +BASE::HEXADECIMAL;
 
 
 
@@ -1226,40 +1212,39 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 }
 
 #ifdef TEST_BRCALC
-void test_just_one_time() {
+void test_just_one_time(operation_t & ops) {
 
-        struct operation history [1024];// = new();
         static __int16 cursor = 0;
         gbString display = gb_string_make(all, "");
 
 
 
-        // addDigitToCurrentOperand(3,history[cursor], display); 
-        // operateOrContinue(OP::SUM, history[cursor], display);
-        // addDigitToCurrentOperand(3,history[cursor], display);
-        // operateOrContinue(OP::EQUALS, history[cursor], display);
+        // addDigitToCurrentOperand(3,ops, display); 
+        // operateOrContinue(OP::SUM, ops, display);
+        // addDigitToCurrentOperand(3,ops, display);
+        // operateOrContinue(OP::EQUALS, ops, display);
 
-        addDigitToCurrentOperand(3,history[cursor], display); 
-        operateOrContinue(OP::SUM, history[cursor], display);
-        addDigitToCurrentOperand(4,history[cursor], display);
-        operateOrContinue(OP::SUM, history[cursor], display);
-        addDigitToCurrentOperand(5,history[cursor], display);
-        addDigitToCurrentOperand(5,history[cursor], display);
-        addDigitToCurrentOperand(5,history[cursor], display);
-        operateOrContinue(OP::EQUALS, history[cursor], display);
+        addDigitToCurrentOperand(3,ops, display); 
+        operateOrContinue(OP::SUM, ops, display);
+        addDigitToCurrentOperand(4,ops, display);
+        operateOrContinue(OP::SUM, ops, display);
+        addDigitToCurrentOperand(5,ops, display);
+        addDigitToCurrentOperand(5,ops, display);
+        addDigitToCurrentOperand(5,ops, display);
+        operateOrContinue(OP::EQUALS, ops, display);
 
 
-        // addDigitToCurrentOperand(3,history[cursor], display); 
-        // operateOrContinue(OP::MULTIPLICATION, history[cursor], display);
-        // addDigitToCurrentOperand(3,history[cursor], display); 
+        // addDigitToCurrentOperand(3,ops, display); 
+        // operateOrContinue(OP::MULTIPLICATION, ops, display);
+        // addDigitToCurrentOperand(3,ops, display); 
 
-        // addDigitToCurrentOperand(3,history[cursor], display); 
-        // operateOrContinue(OP::DIVISION, history[cursor], display);
-        // addDigitToCurrentOperand(3,history[cursor], display);
+        // addDigitToCurrentOperand(3,ops, display); 
+        // operateOrContinue(OP::DIVISION, ops, display);
+        // addDigitToCurrentOperand(3,ops, display);
 
-        // addDigitToCurrentOperand(3,history[cursor], display); 
-        // operateOrContinue(OP::SUBTRACTION, history[cursor], display);
-        // addDigitToCurrentOperand(3,history[cursor], display); 
+        // addDigitToCurrentOperand(3,ops, display); 
+        // operateOrContinue(OP::SUBTRACTION, ops, display);
+        // addDigitToCurrentOperand(3,ops, display); 
     }
 #endif
 
