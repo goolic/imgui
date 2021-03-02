@@ -93,15 +93,17 @@ BETTER_ENUM (BASE, u8,
     DECIMAL=10,
     HEXADECIMAL=16)
 
-arr {
-    u8 item[ARR_MAX] = { 0 };
+struct listOfDigits_struct {
+    u8 item[ARR_MAX-1];// = { 0 };
     u8 size = 0;
     u8 commaPosition;
     bool hasComma;
 };
 
+typedef listOfDigits_struct listOfDigits_t;
+
 struct operand_struct {
-    u64 listOfDigits[ARR_MAX-1] = { 0 };
+    listOfDigits_t (*listOfDigits);// needs malloc = { 0 };
     u32 powOrder = 0;
     f64 value;
     u64 size = 0;
@@ -117,14 +119,14 @@ struct historyNew {
     f64 resultBuffer = 0.0;
     BASE base= BASE::DECIMAL;
     OP op = OP::NONE;
-    operand_t (*operands)[]; //[ARR_MAX-1] = { 0 };
+    operand_t *operands; //[ARR_MAX-1] = { 0 };
 };
 
 struct operation_struct {
     f64 x = 0;
     f64 result = 0;
     BASE base= BASE::DECIMAL;
-    operand_t *listOfOperands; //needs malloc
+    operand_t (*listOfOperands); //needs malloc
     u64 numberOfOperandsToOperate = 0;
     OP op = OP::NONE;
     ST state = ST::FIRST_OPERAND;
@@ -251,7 +253,8 @@ char * arrayToString(operand_t & theArr) {
     static u16 i = 0;
     u64 ch = 0;
     for (i = 0; i != theArr.size; i = i + 1) {
-        ch = theArr.listOfDigits[i] + 48;
+        u64 oie = theArr.listOfDigits->item[i];
+        ch = oie + 48;
         arrayS[i] = (char)ch;
     }
     return arrayS;
@@ -283,7 +286,7 @@ f64 assembleOperandFromListOfDigits (operation_t& ops) {
 
         if (ops.state == +ST::FIRST_OPERAND) {
             cursor = ops.listOfOperands[ops.size].size-1;
-            digitToPow = ops.listOfOperands[ops.size].listOfDigits[cursor];
+            digitToPow = ops.listOfOperands[ops.size].listOfDigits->item[cursor];
             powStopCondition = ops.listOfOperands[ops.size].size;
         }
             
@@ -312,12 +315,12 @@ f64 addDigitToCurrentOperand (u8 digit, operation_t& ops, gbString& display) {
     if (digit == 5)
         printf("stop here\n");
 
-    auto current_Operand = ops.listOfOperands[ops.size].listOfDigits[ops.listOfOperands[ops.size].size];
+    listOfDigits_t* listOfDigits = ops.listOfOperands[ops.size].listOfDigits;
 
     if (ops.state == +ST::FIRST_OPERAND) {
-        current_Operand = digit;
-        printf ("current_Operand: %I64d/n", current_Operand);
-        ops.listOfOperands[ops.size].size = ops.listOfOperands[ops.size].size + 1;
+        u64 sizeOfList = listOfDigits->size;
+        listOfDigits->item[sizeOfList] = digit;
+        listOfDigits->size = listOfDigits->size + 1;
         ops.x =  assembleOperandFromListOfDigits(ops);//(ops.x + (double)(digit * pow(10, ops.e)));
 
         gb_string_clear(display);
@@ -415,6 +418,7 @@ int main(int, char**) {
     // static struct history_of_operands = (struct historyNew*) gb_alloc((all), ((ARR_MAX-1)*gb_size_of(struct historyNew)));
     operation_t* ops = (operation_t*) gb_alloc((all), ((ARR_MAX-1)*gb_size_of(operation_t)));
     ops->listOfOperands = (operand_t*) gb_alloc((all), ((ARR_MAX-1)*gb_size_of(operand_t)));
+    ops->listOfOperands->listOfDigits = (listOfDigits_t*) gb_alloc((all), ((ARR_MAX-1)*gb_size_of(listOfDigits_t)));
 
     //isso foi meu chute de como fazer funcionar a versão android !
     //o codigo original fica no .ino o arduino chama automagicamente setup e loop
